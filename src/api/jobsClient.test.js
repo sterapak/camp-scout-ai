@@ -1,5 +1,3 @@
-import * as jobsClient from './jobsClient';
-
 describe('jobsClient', () => {
   beforeEach(() => {
     jest.resetModules();

@@ -44,6 +44,30 @@ npm test
 npm run cypress:run   # requires dev server running
 ```
 
+## Project Verification
+
+Run all available quality checks and a production build with one command:
+
+```bash
+./scripts/verify.sh
+```
+
+The script detects available npm scripts from `package.json` and runs, in order:
+
+1. **Lint** — `npm run lint` (if defined)
+2. **Unit tests** — `npm run test:unit`, `unit`, or `test` (first found)
+3. **Coverage** — separate `coverage`, `test:coverage`, or `test:ci` script if defined; otherwise notes when `test` already includes coverage
+4. **Production build** — `npm run build` (required)
+
+Behavior:
+
+- Stops immediately on the first failing step
+- Prints clear pass/fail sections for each step
+- Exits with a non-zero status on failure
+- Performs no git, deployment, or release actions
+
+Use this before commits and deployments to validate the project.
+
 ## Project Structure
 
 See `docs/TEMPLATE_INVENTORY.md` for the full routing and component inventory.
