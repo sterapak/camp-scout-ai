@@ -120,16 +120,7 @@
 <a name='L55'></a><a href='#L55'>55</a>
 <a name='L56'></a><a href='#L56'>56</a>
 <a name='L57'></a><a href='#L57'>57</a>
-<a name='L58'></a><a href='#L58'>58</a>
-<a name='L59'></a><a href='#L59'>59</a>
-<a name='L60'></a><a href='#L60'>60</a>
-<a name='L61'></a><a href='#L61'>61</a>
-<a name='L62'></a><a href='#L62'>62</a>
-<a name='L63'></a><a href='#L63'>63</a>
-<a name='L64'></a><a href='#L64'>64</a>
-<a name='L65'></a><a href='#L65'>65</a>
-<a name='L66'></a><a href='#L66'>66</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L58'></a><a href='#L58'>58</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -151,7 +142,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -163,13 +153,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -195,45 +179,39 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { FiHome, FiSettings, FiMenu } from 'react-icons/fi'
-import logoSrc from '../assets/smartapp-logo.png'
+import { FiCompass, FiMenu, FiSettings } from 'react-icons/fi'
 &nbsp;
 export default function AppShell({ children }) {
   return (
     &lt;div className="flex h-screen"&gt;
-      {/* Sidebar */}
       &lt;aside className="w-60 bg-gray-900 text-white flex flex-col"&gt;
-        {/* Logo */}
-        &lt;div className="px-6 py-4 flex-shrink-0"&gt;
-          &lt;img
-            src={logoSrc}
-            alt="Smart-App"
-            className="w-full h-auto object-contain"
-          /&gt;
+        &lt;div className="px-6 py-5 flex-shrink-0 border-b border-gray-800"&gt;
+          &lt;div className="flex items-center gap-2"&gt;
+            &lt;FiCompass className="text-green-400" size={28} /&gt;
+            &lt;div&gt;
+              &lt;p className="text-lg font-bold leading-tight"&gt;Camp Scout AI&lt;/p&gt;
+              &lt;p className="text-xs text-gray-400"&gt;NorCal campground guide&lt;/p&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
         &lt;/div&gt;
 &nbsp;
-        {/* Nav Links */}
-        &lt;nav className="flex-1 px-3 space-y-2"&gt;
+        &lt;nav className="flex-1 px-3 py-4 space-y-2"&gt;
           &lt;NavLink
-            to="/dashboard"
+            to="/campgrounds"
             className={({ isActive }) =&gt;
               `flex items-center px-4 py-2 rounded-lg transition ${
-                isActive
-                  ? <span class="branch-0 cbranch-no" title="branch not covered" >'bg-gray-700'</span>
-                  : 'hover:bg-gray-800'
+                isActive ? <span class="branch-0 cbranch-no" title="branch not covered" >'bg-gray-700' </span>: 'hover:bg-gray-800'
               }`
             }
           &gt;
-            &lt;FiHome className="mr-3" /&gt;
-            Dashboard
+            &lt;FiCompass className="mr-3" /&gt;
+            Browse Campgrounds
           &lt;/NavLink&gt;
           &lt;NavLink
             to="/settings"
             className={({ isActive }) =&gt;
               `flex items-center px-4 py-2 rounded-lg transition ${
-                isActive
-                  ? <span class="branch-0 cbranch-no" title="branch not covered" >'bg-gray-700'</span>
-                  : 'hover:bg-gray-800'
+                isActive ? <span class="branch-0 cbranch-no" title="branch not covered" >'bg-gray-700' </span>: 'hover:bg-gray-800'
               }`
             }
           &gt;
@@ -242,16 +220,14 @@ export default function AppShell({ children }) {
           &lt;/NavLink&gt;
         &lt;/nav&gt;
 &nbsp;
-        {/* Mobile menu icon */}
         &lt;div className="px-4 py-3 md:hidden"&gt;
           &lt;FiMenu size={24} className="text-gray-400 hover:text-white cursor-pointer" /&gt;
         &lt;/div&gt;
       &lt;/aside&gt;
 &nbsp;
-      {/* Main area */}
-      &lt;div className="flex-1 flex flex-col bg-white"&gt;
-        &lt;header className="h-16 border-b px-6 flex items-center shadow-sm"&gt;
-          &lt;h1 className="text-xl font-semibold text-gray-800"&gt;My Project Dashboard&lt;/h1&gt;
+      &lt;div className="flex-1 flex flex-col bg-gray-50"&gt;
+        &lt;header className="h-16 border-b bg-white px-6 flex items-center shadow-sm"&gt;
+          &lt;h1 className="text-xl font-semibold text-gray-800"&gt;Camp Scout AI&lt;/h1&gt;
         &lt;/header&gt;
         &lt;main className="p-8 flex-1 overflow-auto"&gt;{children}&lt;/main&gt;
       &lt;/div&gt;
@@ -265,7 +241,7 @@ export default function AppShell({ children }) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-06-20T16:22:26.672Z
+                at 2026-06-22T17:16:28.653Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

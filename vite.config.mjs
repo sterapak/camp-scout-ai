@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
-  base: '/smartapp-ui-kit/', // ← 👈 add this line
+  base: '/camp-scout-ai/',
   plugins: [react()],
   resolve: {
     alias: {

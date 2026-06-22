@@ -1,6 +1,7 @@
 {
-  "name": "smartapp-ui-kit",
+  "name": "camp-scout-ai",
   "version": "0.1.0",
+  "description": "Camp Scout AI — real Northern California campground seed data browser",
   "private": true,
   "scripts": {
     "dev": "vite",
