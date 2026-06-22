@@ -33,6 +33,10 @@ npm run dev
 
 The app runs at [http://localhost:5173](http://localhost:5173).
 
+**GitHub Pages:** [https://sterapak.github.io/camp-scout-ai/campgrounds](https://sterapak.github.io/camp-scout-ai/campgrounds)
+
+> The old `/smartapp-ui-kit/` URL is no longer valid. Use `/camp-scout-ai/` on GitHub Pages or `/campgrounds` locally.
+
 ## Testing
 
 ```bash

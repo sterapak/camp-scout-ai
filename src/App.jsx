@@ -5,9 +5,11 @@ import CampgroundsPage from './pages/CampgroundsPage'
 import CampgroundDetailPage from './pages/CampgroundDetailPage'
 import SettingsPage from './pages/SettingsPage'
 
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
+
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={basename || undefined}>
       <AppShell>
         <Routes>
           <Route path="/" element={<Navigate to="/campgrounds" />} />
