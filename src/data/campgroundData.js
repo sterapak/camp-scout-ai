@@ -32,17 +32,23 @@ export function getAllTags() {
  * @param {{
  *   query?: string
  *   region?: string
- *   amenity?: string
+ *   amenities?: string[]
  *   tag?: string
  * }} filters
  * @returns {import('./campgroundSchema.js').Campground[]}
  */
-export function searchCampgrounds({ query = '', region = '', amenity = '', tag = '' } = {}) {
+export function searchCampgrounds({ query = '', region = '', amenities = [], tag = '' } = {}) {
   const normalizedQuery = query.trim().toLowerCase()
+  const selectedAmenities = amenities.filter(Boolean)
 
   return getAllCampgrounds().filter((campground) => {
     if (region && campground.region !== region) return false
-    if (amenity && !campground.amenities.includes(amenity)) return false
+    if (
+      selectedAmenities.length > 0 &&
+      !selectedAmenities.every((amenity) => campground.amenities.includes(amenity))
+    ) {
+      return false
+    }
     if (tag && !campground.tags.includes(tag)) return false
 
     if (!normalizedQuery) return true
