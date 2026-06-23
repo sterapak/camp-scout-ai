@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import AvailabilityNotice from '../components/AvailabilityNotice'
 import CampgroundFilters from '../components/CampgroundFilters'
 import CampgroundList from '../components/CampgroundList'
@@ -10,14 +11,34 @@ import {
 } from '../data/campgroundData'
 
 export default function CampgroundsPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [query, setQuery] = useState('')
   const [region, setRegion] = useState('')
-  const [selectedAmenities, setSelectedAmenities] = useState([])
   const [tag, setTag] = useState('')
 
   const regions = useMemo(() => getAllRegions(), [])
   const amenityOptions = useMemo(() => getAllAmenities(), [])
   const tags = useMemo(() => getAllTags(), [])
+
+  const selectedAmenities = useMemo(
+    () => searchParams.getAll('amenity').filter((amenity) => amenityOptions.includes(amenity)),
+    [searchParams, amenityOptions]
+  )
+
+  const setSelectedAmenities = useCallback(
+    (amenities) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.delete('amenity')
+          amenities.forEach((amenity) => next.append('amenity', amenity))
+          return next
+        },
+        { replace: true }
+      )
+    },
+    [setSearchParams]
+  )
 
   const results = useMemo(
     () => searchCampgrounds({ query, region, amenities: selectedAmenities, tag }),
