@@ -4,6 +4,33 @@
  */
 
 /**
+ * Writes diagnostic output directly to stderr so Vite middleware logs stay visible.
+ * @param {string} label
+ * @param {Record<string, unknown>} payload
+ */
+function writeDiagnostic(label, payload) {
+  process.stderr.write(`${label} ${JSON.stringify(payload)}\n`)
+}
+
+/**
+ * Returns a safe fingerprint for an API key (prefix + suffix only).
+ * @param {string | undefined} apiKey
+ * @returns {string}
+ */
+export function describeOpenAiApiKey(apiKey) {
+  if (typeof apiKey !== 'string' || apiKey.trim().length === 0) {
+    return '(missing)'
+  }
+
+  const trimmed = apiKey.trim()
+  if (trimmed.length <= 8) {
+    return '(configured)'
+  }
+
+  return `${trimmed.slice(0, 7)}...${trimmed.slice(-4)}`
+}
+
+/**
  * @param {string} scope
  * @param {{
  *   provider?: string,
@@ -11,6 +38,7 @@
  *   responseStatus?: number,
  *   errorCode?: string,
  *   errorMessage?: string,
+ *   apiKeyFingerprint?: string,
  * }} details
  */
 export function logOpenAiDiagnostic(scope, details = {}) {
@@ -21,9 +49,10 @@ export function logOpenAiDiagnostic(scope, details = {}) {
     responseStatus: details.responseStatus ?? null,
     errorCode: details.errorCode ?? null,
     errorMessage: details.errorMessage ?? null,
+    apiKeyFingerprint: details.apiKeyFingerprint ?? describeOpenAiApiKey(process.env.OPENAI_API_KEY),
   }
 
-  console.error('[OpenAI diagnostic]', JSON.stringify(payload))
+  writeDiagnostic('[OpenAI diagnostic]', payload)
 }
 
 /**
@@ -34,14 +63,13 @@ export function logOpenAiEnvDiagnostic(scope) {
   const provider = process.env.OPENAI_ANSWER_PROVIDER ?? '(unset)'
   const model = process.env.OPENAI_MODEL ?? '(unset, default gpt-4o-mini)'
   const baseUrl = process.env.OPENAI_BASE_URL ?? '(unset, default https://api.openai.com/v1)'
-  const apiKeyConfigured = typeof process.env.OPENAI_API_KEY === 'string'
-    && process.env.OPENAI_API_KEY.trim().length > 0
+  const apiKey = process.env.OPENAI_API_KEY
 
-  console.error('[OpenAI env diagnostic]', JSON.stringify({
+  writeDiagnostic('[OpenAI env diagnostic]', {
     scope,
     OPENAI_ANSWER_PROVIDER: provider,
     OPENAI_MODEL: model,
     OPENAI_BASE_URL: baseUrl,
-    OPENAI_API_KEY: apiKeyConfigured ? '(configured)' : '(missing)',
-  }))
+    OPENAI_API_KEY: describeOpenAiApiKey(apiKey),
+  })
 }
