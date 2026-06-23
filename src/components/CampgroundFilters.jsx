@@ -5,32 +5,40 @@ import { FiSearch } from 'react-icons/fi'
  * @param {{
  *   query: string
  *   region: string
- *   amenity: string
+ *   selectedAmenities: string[]
  *   tag: string
  *   regions: string[]
- *   amenities: string[]
+ *   amenityOptions: string[]
  *   tags: string[]
  *   onQueryChange: (value: string) => void
  *   onRegionChange: (value: string) => void
- *   onAmenityChange: (value: string) => void
+ *   onAmenitiesChange: (value: string[]) => void
  *   onTagChange: (value: string) => void
  * }} props
  */
 export default function CampgroundFilters({
   query,
   region,
-  amenity,
+  selectedAmenities,
   tag,
   regions,
-  amenities,
+  amenityOptions,
   tags,
   onQueryChange,
   onRegionChange,
-  onAmenityChange,
+  onAmenitiesChange,
   onTagChange,
 }) {
   const selectClass =
     'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600'
+
+  function toggleAmenity(amenity) {
+    if (selectedAmenities.includes(amenity)) {
+      onAmenitiesChange(selectedAmenities.filter((value) => value !== amenity))
+    } else {
+      onAmenitiesChange([...selectedAmenities, amenity])
+    }
+  }
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm space-y-4">
@@ -66,24 +74,39 @@ export default function CampgroundFilters({
           </select>
         </label>
 
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
-            Amenity
-          </span>
-          <select
-            value={amenity}
-            onChange={(e) => onAmenityChange(e.target.value)}
-            className={selectClass}
-            aria-label="Filter by amenity"
+        <fieldset className="block">
+          <legend className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+            Amenities
+          </legend>
+          <div
+            className="max-h-36 overflow-y-auto rounded-lg border border-gray-300 bg-white px-3 py-2 space-y-1.5"
+            aria-label="Filter by amenities"
           >
-            <option value="">All amenities</option>
-            {amenities.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
+            {amenityOptions.map((amenity) => (
+              <label
+                key={amenity}
+                className="flex items-center gap-2 text-sm text-gray-800 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedAmenities.includes(amenity)}
+                  onChange={() => toggleAmenity(amenity)}
+                  className="rounded border-gray-300 text-green-600 focus:ring-green-600"
+                />
+                <span>{amenity}</span>
+              </label>
             ))}
-          </select>
-        </label>
+          </div>
+          {selectedAmenities.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onAmenitiesChange([])}
+              className="mt-1 text-xs text-green-700 hover:underline"
+            >
+              Clear amenities ({selectedAmenities.length})
+            </button>
+          )}
+        </fieldset>
 
         <label className="block">
           <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
