@@ -3,7 +3,7 @@ node_modules
 dist
 .DS_Store
 .env
-.env
 
-# generated test coverage output
+# generated outputs
 coverage/
+docs/assets/
