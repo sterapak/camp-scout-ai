@@ -4,54 +4,59 @@ import { MemoryRouter } from 'react-router-dom'
 import RetrievalPlaygroundPage from './RetrievalPlaygroundPage'
 
 describe('RetrievalPlaygroundPage', () => {
-  it('renders the playground heading and search form', () => {
+  it('renders the playground heading and empty context preview', () => {
     render(
       <MemoryRouter>
         <RetrievalPlaygroundPage />
-      </MemoryRouter>,
+      </MemoryRouter>
     )
 
-    expect(screen.getByText('Retrieval Playground')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText(/Enter a retrieval query/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument()
+    expect(screen.getByText('Knowledge Retrieval Playground')).toBeInTheDocument()
+    expect(screen.getByText('Prepared LLM context')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Enter a question and retrieve knowledge to preview/)
+    ).toBeInTheDocument()
   })
 
-  it('displays retrieval results with similarity scores and source metadata', async () => {
+  it('retrieves and displays knowledge documents for a question', async () => {
     const user = userEvent.setup()
-
     render(
       <MemoryRouter>
         <RetrievalPlaygroundPage />
-      </MemoryRouter>,
+      </MemoryRouter>
     )
 
-    const input = screen.getByPlaceholderText(/Enter a retrieval query/i)
-    await user.type(input, 'bear food storage')
-    await user.click(screen.getByRole('button', { name: /search/i }))
+    await user.type(
+      screen.getByLabelText('Enter a question to retrieve knowledge'),
+      'bear food storage'
+    )
+    await user.click(screen.getByRole('button', { name: 'Retrieve knowledge' }))
 
-    const articles = await screen.findAllByRole('article')
-    expect(articles.length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Similarity').length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/Source:/).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Retrieved \d+ document/)).toBeInTheDocument()
+    expect(screen.getByText('Retrieved sources')).toBeInTheDocument()
+    expect(screen.getByText('Source 1')).toBeInTheDocument()
+    expect(screen.getByLabelText('Prepared LLM context preview')).toHaveTextContent(
+      'User question: bear food storage'
+    )
   })
 
-  it('does not display AI-generated answers', async () => {
+  it('shows no results message when nothing matches', async () => {
     const user = userEvent.setup()
-
     render(
       <MemoryRouter>
         <RetrievalPlaygroundPage />
-      </MemoryRouter>,
+      </MemoryRouter>
     )
 
-    const input = screen.getByPlaceholderText(/Enter a retrieval query/i)
-    await user.type(input, 'reservation policy')
-    await user.click(screen.getByRole('button', { name: /search/i }))
+    await user.type(
+      screen.getByLabelText('Enter a question to retrieve knowledge'),
+      'qqqqqqqqqqqq'
+    )
+    await user.click(screen.getByRole('button', { name: 'Retrieve knowledge' }))
 
-    const articles = await screen.findAllByRole('article')
-    expect(articles.length).toBeGreaterThan(0)
-
-    expect(screen.queryByText(/^AI answer:/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/generated response/i)).not.toBeInTheDocument()
+    expect(screen.getByText('No matching documents found.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Prepared LLM context preview')).toHaveTextContent(
+      'No matching knowledge documents were found.'
+    )
   })
 })
