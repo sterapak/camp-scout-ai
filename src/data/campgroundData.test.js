@@ -45,10 +45,31 @@ describe('campgroundData', () => {
     expect(results.every((c) => c.region === region)).toBe(true)
   })
 
-  it('filters by amenity', () => {
+  it('filters by a single amenity', () => {
     const amenity = getAllAmenities()[0]
-    const results = searchCampgrounds({ amenity })
+    const results = searchCampgrounds({ amenities: [amenity] })
     expect(results.every((c) => c.amenities.includes(amenity))).toBe(true)
+  })
+
+  it('filters by multiple amenities requiring all selected', () => {
+    const all = getAllAmenities()
+    const withMultiple = getAllCampgrounds().find((c) => c.amenities.length >= 2)
+    expect(withMultiple).toBeDefined()
+
+    const [first, second] = withMultiple.amenities
+    const results = searchCampgrounds({ amenities: [first, second] })
+
+    expect(results.length).toBeGreaterThan(0)
+    results.forEach((c) => {
+      expect(c.amenities).toEqual(expect.arrayContaining([first, second]))
+    })
+
+    const tooMany = searchCampgrounds({ amenities: [first, second, all.find((a) => !withMultiple.amenities.includes(a))] })
+    expect(tooMany.every((c) => c.amenities.includes(first) && c.amenities.includes(second))).toBe(true)
+  })
+
+  it('returns all campgrounds when no amenities are selected', () => {
+    expect(searchCampgrounds({ amenities: [] }).length).toBe(getAllCampgrounds().length)
   })
 
   it('filters by tag', () => {

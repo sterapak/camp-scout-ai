@@ -12,16 +12,16 @@ import {
 export default function CampgroundsPage() {
   const [query, setQuery] = useState('')
   const [region, setRegion] = useState('')
-  const [amenity, setAmenity] = useState('')
+  const [selectedAmenities, setSelectedAmenities] = useState([])
   const [tag, setTag] = useState('')
 
   const regions = useMemo(() => getAllRegions(), [])
-  const amenities = useMemo(() => getAllAmenities(), [])
+  const amenityOptions = useMemo(() => getAllAmenities(), [])
   const tags = useMemo(() => getAllTags(), [])
 
   const results = useMemo(
-    () => searchCampgrounds({ query, region, amenity, tag }),
-    [query, region, amenity, tag]
+    () => searchCampgrounds({ query, region, amenities: selectedAmenities, tag }),
+    [query, region, selectedAmenities, tag]
   )
 
   return (
@@ -38,14 +38,14 @@ export default function CampgroundsPage() {
       <CampgroundFilters
         query={query}
         region={region}
-        amenity={amenity}
+        selectedAmenities={selectedAmenities}
         tag={tag}
         regions={regions}
-        amenities={amenities}
+        amenityOptions={amenityOptions}
         tags={tags}
         onQueryChange={setQuery}
         onRegionChange={setRegion}
-        onAmenityChange={setAmenity}
+        onAmenitiesChange={setSelectedAmenities}
         onTagChange={setTag}
       />
 
