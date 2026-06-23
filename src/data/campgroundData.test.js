@@ -41,8 +41,22 @@ describe('campgroundData', () => {
 
   it('filters by region', () => {
     const region = getAllRegions()[0]
-    const results = searchCampgrounds({ region })
+    const results = searchCampgrounds({ regions: [region] })
     expect(results.every((c) => c.region === region)).toBe(true)
+  })
+
+  it('filters by multiple regions matching any selected', () => {
+    const [first, second] = getAllRegions().slice(0, 2)
+    const results = searchCampgrounds({ regions: [first, second] })
+
+    expect(results.length).toBeGreaterThan(0)
+    results.forEach((c) => {
+      expect([first, second]).toContain(c.region)
+    })
+  })
+
+  it('returns all campgrounds when no regions are selected', () => {
+    expect(searchCampgrounds({ regions: [] }).length).toBe(getAllCampgrounds().length)
   })
 
   it('filters by a single amenity', () => {
@@ -74,13 +88,27 @@ describe('campgroundData', () => {
 
   it('filters by tag', () => {
     const tag = getAllTags()[0]
-    const results = searchCampgrounds({ tag })
+    const results = searchCampgrounds({ tags: [tag] })
     expect(results.every((c) => c.tags.includes(tag))).toBe(true)
+  })
+
+  it('filters by multiple tags matching any selected', () => {
+    const [first, second] = getAllTags().slice(0, 2)
+    const results = searchCampgrounds({ tags: [first, second] })
+
+    expect(results.length).toBeGreaterThan(0)
+    results.forEach((c) => {
+      expect(c.tags.includes(first) || c.tags.includes(second)).toBe(true)
+    })
+  })
+
+  it('returns all campgrounds when no tags are selected', () => {
+    expect(searchCampgrounds({ tags: [] }).length).toBe(getAllCampgrounds().length)
   })
 
   it('combines multiple filters', () => {
     const tag = 'state-park'
-    const results = searchCampgrounds({ query: 'redwood', tag })
+    const results = searchCampgrounds({ query: 'redwood', tags: [tag] })
     results.forEach((c) => {
       expect(c.tags).toContain(tag)
     })

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import AvailabilityNotice from '../components/AvailabilityNotice'
 import CampgroundFilters from '../components/CampgroundFilters'
@@ -10,39 +10,47 @@ import {
   searchCampgrounds,
 } from '../data/campgroundData'
 
+/** @param {URLSearchParams} searchParams @param {string} key */
+function readMultiParam(searchParams, key) {
+  return searchParams.getAll(key).filter(Boolean)
+}
+
 export default function CampgroundsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+
   const [query, setQuery] = useState('')
-  const [region, setRegion] = useState('')
-  const [tag, setTag] = useState('')
+  const [selectedRegions, setSelectedRegions] = useState(() => readMultiParam(searchParams, 'region'))
+  const [selectedAmenities, setSelectedAmenities] = useState(() =>
+    readMultiParam(searchParams, 'amenity')
+  )
+  const [selectedTags, setSelectedTags] = useState(() => readMultiParam(searchParams, 'tag'))
 
   const regions = useMemo(() => getAllRegions(), [])
   const amenityOptions = useMemo(() => getAllAmenities(), [])
   const tags = useMemo(() => getAllTags(), [])
 
-  const selectedAmenities = useMemo(
-    () => searchParams.getAll('amenity').filter((amenity) => amenityOptions.includes(amenity)),
-    [searchParams, amenityOptions]
-  )
+  useEffect(() => {
+    const params = new URLSearchParams()
+    selectedRegions.forEach((region) => params.append('region', region))
+    selectedAmenities.forEach((amenity) => params.append('amenity', amenity))
+    selectedTags.forEach((tag) => params.append('tag', tag))
 
-  const setSelectedAmenities = useCallback(
-    (amenities) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev)
-          next.delete('amenity')
-          amenities.forEach((amenity) => next.append('amenity', amenity))
-          return next
-        },
-        { replace: true }
-      )
-    },
-    [setSearchParams]
-  )
+    const next = params.toString()
+    const current = searchParams.toString()
+    if (next !== current) {
+      setSearchParams(params, { replace: true })
+    }
+  }, [selectedRegions, selectedAmenities, selectedTags, searchParams, setSearchParams])
 
   const results = useMemo(
-    () => searchCampgrounds({ query, region, amenities: selectedAmenities, tag }),
-    [query, region, selectedAmenities, tag]
+    () =>
+      searchCampgrounds({
+        query,
+        regions: selectedRegions,
+        amenities: selectedAmenities,
+        tags: selectedTags,
+      }),
+    [query, selectedRegions, selectedAmenities, selectedTags]
   )
 
   return (
@@ -58,16 +66,16 @@ export default function CampgroundsPage() {
 
       <CampgroundFilters
         query={query}
-        region={region}
+        selectedRegions={selectedRegions}
         selectedAmenities={selectedAmenities}
-        tag={tag}
+        selectedTags={selectedTags}
         regions={regions}
         amenityOptions={amenityOptions}
         tags={tags}
         onQueryChange={setQuery}
-        onRegionChange={setRegion}
+        onRegionsChange={setSelectedRegions}
         onAmenitiesChange={setSelectedAmenities}
-        onTagChange={setTag}
+        onTagsChange={setSelectedTags}
       />
 
       <p className="text-sm text-gray-500">

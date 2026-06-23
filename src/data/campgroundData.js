@@ -31,25 +31,32 @@ export function getAllTags() {
 /**
  * @param {{
  *   query?: string
- *   region?: string
+ *   regions?: string[]
  *   amenities?: string[]
- *   tag?: string
+ *   tags?: string[]
  * }} filters
  * @returns {import('./campgroundSchema.js').Campground[]}
  */
-export function searchCampgrounds({ query = '', region = '', amenities = [], tag = '' } = {}) {
+export function searchCampgrounds({ query = '', regions = [], amenities = [], tags = [] } = {}) {
   const normalizedQuery = query.trim().toLowerCase()
+  const selectedRegions = regions.filter(Boolean)
   const selectedAmenities = amenities.filter(Boolean)
+  const selectedTags = tags.filter(Boolean)
 
   return getAllCampgrounds().filter((campground) => {
-    if (region && campground.region !== region) return false
+    if (selectedRegions.length > 0 && !selectedRegions.includes(campground.region)) return false
     if (
       selectedAmenities.length > 0 &&
       !selectedAmenities.every((amenity) => campground.amenities.includes(amenity))
     ) {
       return false
     }
-    if (tag && !campground.tags.includes(tag)) return false
+    if (
+      selectedTags.length > 0 &&
+      !selectedTags.some((tag) => campground.tags.includes(tag))
+    ) {
+      return false
+    }
 
     if (!normalizedQuery) return true
 
