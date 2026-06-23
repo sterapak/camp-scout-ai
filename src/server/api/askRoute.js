@@ -57,6 +57,7 @@ export function sendJsonResponse(res, statusCode, body) {
  * @param {{
  *   answerProvider?: import('../openai/answerProvider.js').AnswerProvider,
  *   provider?: import('../openai/createAnswerProvider.js').AnswerProviderName,
+ *   reloadOpenAiEnv?: () => void,
  * }} [options]
  * @returns {(req: import('http').IncomingMessage, res: import('http').ServerResponse, next: () => void) => Promise<void>}
  */
@@ -76,6 +77,7 @@ export function createAskRouteMiddleware(options = {}) {
     }
 
     try {
+      options.reloadOpenAiEnv?.()
       const body = await readJsonRequestBody(req)
       const response = await handleAskRequest(body, options)
       sendJsonResponse(res, response.statusCode, response.body)

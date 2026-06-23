@@ -4,6 +4,7 @@
  */
 
 import { createFakeAnswerProvider } from './fakeAnswerProvider.js'
+import { logOpenAiDiagnostic } from './logOpenAiDiagnostic.js'
 import { createOpenAiAnswerProvider } from './openAiResponsesClient.js'
 
 export const ANSWER_PROVIDER_ENV = 'OPENAI_ANSWER_PROVIDER'
@@ -36,6 +37,12 @@ export function resolveAnswerProviderName(explicitProvider) {
  */
 export function createAnswerProvider(options = {}) {
   const providerName = resolveAnswerProviderName(options.provider)
+
+  logOpenAiDiagnostic('createAnswerProvider', {
+    explicitProvider: options.provider ?? null,
+    envProvider: process.env[ANSWER_PROVIDER_ENV] ?? '(unset)',
+    resolvedProvider: providerName,
+  })
 
   if (providerName === 'openai') {
     return createOpenAiAnswerProvider(options)
