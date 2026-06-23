@@ -32,9 +32,13 @@ export default function CampgroundFilters({
   const selectClass =
     'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600'
 
+  function removeAmenity(amenity) {
+    onAmenitiesChange(selectedAmenities.filter((value) => value !== amenity))
+  }
+
   function toggleAmenity(amenity) {
     if (selectedAmenities.includes(amenity)) {
-      onAmenitiesChange(selectedAmenities.filter((value) => value !== amenity))
+      removeAmenity(amenity)
     } else {
       onAmenitiesChange([...selectedAmenities, amenity])
     }
@@ -98,13 +102,36 @@ export default function CampgroundFilters({
             ))}
           </div>
           {selectedAmenities.length > 0 && (
-            <button
-              type="button"
-              onClick={() => onAmenitiesChange([])}
-              className="mt-1 text-xs text-green-700 hover:underline"
-            >
-              Clear amenities ({selectedAmenities.length})
-            </button>
+            <div className="mt-2 space-y-1.5">
+              <div
+                className="flex flex-wrap gap-1.5"
+                aria-label="Selected amenities"
+              >
+                {selectedAmenities.map((amenity) => (
+                  <span
+                    key={amenity}
+                    className="inline-flex items-center gap-1 rounded-full bg-green-50 pl-2 pr-1 py-0.5 text-xs font-medium text-green-800"
+                  >
+                    {amenity}
+                    <button
+                      type="button"
+                      onClick={() => removeAmenity(amenity)}
+                      className="rounded-full p-0.5 text-green-700 hover:bg-green-100 hover:text-green-900"
+                      aria-label={`Remove ${amenity}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => onAmenitiesChange([])}
+                className="text-xs text-green-700 hover:underline"
+              >
+                Clear amenities ({selectedAmenities.length})
+              </button>
+            </div>
           )}
         </fieldset>
 
