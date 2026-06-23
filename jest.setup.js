@@ -18,4 +18,8 @@ jest.mock('@supabase/supabase-js', () => ({
 
 // Set dummy env vars for Supabase
 process.env.VITE_SUPABASE_URL = 'http://localhost:54321';
-process.env.VITE_SUPABASE_KEY = 'dummy-key'; 
+process.env.VITE_SUPABASE_KEY = 'dummy-key';
+
+// Keep OpenAI answer generation on the fake provider in unit tests.
+process.env.OPENAI_ANSWER_PROVIDER = 'fake';
+delete process.env.OPENAI_API_KEY; 
