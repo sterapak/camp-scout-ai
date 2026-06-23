@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { FiCompass, FiMenu, FiSearch, FiSettings } from 'react-icons/fi'
+import { FiBookOpen, FiCompass, FiMenu, FiSettings } from 'react-icons/fi'
 
 export default function AppShell({ children }) {
   return (
@@ -29,15 +29,15 @@ export default function AppShell({ children }) {
             Browse Campgrounds
           </NavLink>
           <NavLink
-            to="/retrieval-playground"
+            to="/retrieval"
             className={({ isActive }) =>
               `flex items-center px-4 py-2 rounded-lg transition ${
                 isActive ? 'bg-gray-700' : 'hover:bg-gray-800'
               }`
             }
           >
-            <FiSearch className="mr-3" />
-            Retrieval Playground
+            <FiBookOpen className="mr-3" />
+            Knowledge Retrieval
           </NavLink>
           <NavLink
             to="/settings"
