@@ -3,6 +3,7 @@
 import fs from 'fs'
 import path from 'path'
 import { fakeAnswerProvider } from '../openai/fakeAnswerProvider.js'
+import { MissingOpenAiApiKeyError, OpenAiResponseError } from '../openai/errors.js'
 import {
   EMPTY_QUESTION_ERROR,
   handleAskRequest,
@@ -81,6 +82,48 @@ describe('handleAskRequest', () => {
     expect(response.body.status).toBe(INSUFFICIENT_CONTEXT_STATUS)
     expect(response.body.message).toContain('campground knowledge base')
     expect(response.body.citations).toEqual([])
+  })
+
+  it('returns a safe 503 when the provider is missing an API key', async () => {
+    const response = await handleAskRequest(
+      {
+        question: 'What are the bear food storage rules?',
+        campgroundId: 'yosemite-upper-pines',
+      },
+      {
+        answerProvider: {
+          name: 'openai',
+          async generateAnswer() {
+            throw new MissingOpenAiApiKeyError()
+          },
+        },
+      },
+    )
+
+    expect(response.statusCode).toBe(503)
+    expect(response.body).toEqual({ error: 'Answer generation is not available.' })
+    expect(JSON.stringify(response.body)).not.toMatch(/OPENAI_API_KEY|sk-proj-|sk-live-/)
+  })
+
+  it('returns a safe 502 when the provider fails', async () => {
+    const response = await handleAskRequest(
+      {
+        question: 'What are the bear food storage rules?',
+        campgroundId: 'yosemite-upper-pines',
+      },
+      {
+        answerProvider: {
+          name: 'openai',
+          async generateAnswer() {
+            throw new OpenAiResponseError('Upstream failure', { status: 500 })
+          },
+        },
+      },
+    )
+
+    expect(response.statusCode).toBe(502)
+    expect(response.body).toEqual({ error: 'Answer generation failed. Please try again.' })
+    expect(JSON.stringify(response.body)).not.toMatch(/OPENAI_API_KEY|Upstream failure|sk-proj-|sk-live-/)
   })
 })
 
