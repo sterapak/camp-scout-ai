@@ -36,6 +36,29 @@ describe('createAnswerProvider', () => {
     expect(provider.name).toBe('openai')
   })
 
+  it('selects the OpenAI provider when OPENAI_ANSWER_PROVIDER=openai', () => {
+    process.env.OPENAI_ANSWER_PROVIDER = 'openai'
+
+    const provider = createAnswerProvider({
+      apiKey: 'test-key',
+      fetchImpl: jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue({ output_text: 'Answer' }),
+      }),
+    })
+
+    expect(provider.name).toBe('openai')
+  })
+
+  it('prefers an explicit provider override over env configuration', () => {
+    process.env.OPENAI_ANSWER_PROVIDER = 'openai'
+
+    const provider = createAnswerProvider({ provider: 'fake' })
+
+    expect(provider.name).toBe('fake')
+  })
+
   it('resolves provider names safely', () => {
     expect(resolveAnswerProviderName(undefined)).toBe('fake')
     expect(resolveAnswerProviderName('fake')).toBe('fake')
