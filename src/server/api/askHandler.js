@@ -5,6 +5,7 @@
 
 import { generateGroundedAnswer } from '../rag/groundedAnswerGenerator.js'
 import { MissingOpenAiApiKeyError, OpenAiResponseError } from '../openai/errors.js'
+import { logOpenAiDiagnostic } from '../openai/logOpenAiDiagnostic.js'
 
 /**
  * @typedef {Object} AskRequestBody
@@ -114,6 +115,14 @@ export async function handleAskRequest(body, options = {}) {
     }
 
     if (error instanceof OpenAiResponseError) {
+      const configuredProvider = options.provider ?? process.env.OPENAI_ANSWER_PROVIDER ?? 'fake'
+      logOpenAiDiagnostic('handleAskRequest.openAiResponseError', {
+        provider: configuredProvider === 'openai' ? 'openai' : 'fake',
+        model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
+        responseStatus: error.status,
+        errorCode: error.errorCode,
+        errorMessage: error.message,
+      })
       return {
         statusCode: 502,
         body: { error: 'Answer generation failed. Please try again.' },

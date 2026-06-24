@@ -8,6 +8,7 @@ import {
   DEFAULT_OPENAI_MODEL,
 } from './answerProvider.js'
 import { MissingOpenAiApiKeyError, OpenAiResponseError } from './errors.js'
+import { logOpenAiDiagnostic } from './logOpenAiDiagnostic.js'
 
 export const OPENAI_API_KEY_ENV = 'OPENAI_API_KEY'
 export const OPENAI_MODEL_ENV = 'OPENAI_MODEL'
@@ -110,6 +111,11 @@ export function createOpenAiAnswerProvider(options = {}) {
       const input = typeof request?.input === 'string' ? request.input.trim() : ''
 
       if (input.length === 0) {
+        logOpenAiDiagnostic('generateAnswer.emptyInput', {
+          provider: 'openai',
+          model: defaultModel,
+          errorMessage: 'Answer generation requires non-empty input.',
+        })
         throw new OpenAiResponseError('Answer generation requires non-empty input.')
       }
 
@@ -145,6 +151,12 @@ export function createOpenAiAnswerProvider(options = {}) {
       try {
         payload = await readJsonResponseBody(response)
       } catch {
+        logOpenAiDiagnostic('generateAnswer.nonJsonResponse', {
+          provider: 'openai',
+          model,
+          responseStatus: response.status,
+          errorMessage: 'OpenAI returned a non-JSON response.',
+        })
         throw new OpenAiResponseError('OpenAI returned a non-JSON response.', {
           status: response.status,
         })
@@ -154,26 +166,48 @@ export function createOpenAiAnswerProvider(options = {}) {
         const message = typeof payload?.error?.message === 'string'
           ? payload.error.message
           : `OpenAI request failed with status ${response.status}.`
+        const errorCode = typeof payload?.error?.code === 'string' ? payload.error.code : undefined
+        logOpenAiDiagnostic('generateAnswer.httpError', {
+          provider: 'openai',
+          model,
+          responseStatus: response.status,
+          errorCode,
+          errorMessage: message,
+        })
         throw new OpenAiResponseError(message, {
           status: response.status,
-          errorCode: typeof payload?.error?.code === 'string' ? payload.error.code : undefined,
+          errorCode,
         })
       }
 
       if (payload?.error) {
-        throw new OpenAiResponseError(
-          typeof payload.error.message === 'string'
-            ? payload.error.message
-            : 'OpenAI returned an error response.',
-          {
-            status: response.status,
-            errorCode: typeof payload.error.code === 'string' ? payload.error.code : undefined,
-          },
-        )
+        const message = typeof payload.error.message === 'string'
+          ? payload.error.message
+          : 'OpenAI returned an error response.'
+        const errorCode = typeof payload.error.code === 'string' ? payload.error.code : undefined
+        logOpenAiDiagnostic('generateAnswer.payloadError', {
+          provider: 'openai',
+          model,
+          responseStatus: response.status,
+          errorCode,
+          errorMessage: message,
+        })
+        throw new OpenAiResponseError(message, {
+          status: response.status,
+          errorCode,
+        })
       }
 
       const text = extractOutputText(payload)
       if (text.length === 0) {
+        const responseStatus = typeof payload?.status === 'string' ? payload.status : undefined
+        logOpenAiDiagnostic('generateAnswer.emptyAnswer', {
+          provider: 'openai',
+          model,
+          responseStatus: response.status,
+          errorCode: responseStatus,
+          errorMessage: `OpenAI returned an empty answer. response.status=${responseStatus ?? 'unknown'}`,
+        })
         throw new OpenAiResponseError('OpenAI returned an empty answer.')
       }
 
