@@ -34,6 +34,9 @@ export function describeOpenAiApiKey(apiKey) {
  * @param {string} scope
  * @param {{
  *   provider?: string,
+ *   explicitProvider?: string | null,
+ *   envProvider?: string,
+ *   resolvedProvider?: string,
  *   model?: string,
  *   responseStatus?: number,
  *   errorCode?: string,
@@ -44,12 +47,24 @@ export function describeOpenAiApiKey(apiKey) {
 export function logOpenAiDiagnostic(scope, details = {}) {
   const payload = {
     scope,
-    provider: details.provider ?? 'openai',
+    provider: details.provider ?? details.resolvedProvider ?? 'openai',
     model: details.model ?? '(unknown)',
     responseStatus: details.responseStatus ?? null,
     errorCode: details.errorCode ?? null,
     errorMessage: details.errorMessage ?? null,
     apiKeyFingerprint: details.apiKeyFingerprint ?? describeOpenAiApiKey(process.env.OPENAI_API_KEY),
+  }
+
+  if (details.explicitProvider !== undefined) {
+    payload.explicitProvider = details.explicitProvider
+  }
+
+  if (details.envProvider !== undefined) {
+    payload.envProvider = details.envProvider
+  }
+
+  if (details.resolvedProvider !== undefined) {
+    payload.resolvedProvider = details.resolvedProvider
   }
 
   writeDiagnostic('[OpenAI diagnostic]', payload)
