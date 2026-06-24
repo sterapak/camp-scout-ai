@@ -147,6 +147,15 @@ export default function RetrievalPlaygroundPage() {
         </section>
       )}
 
+      <AskAnswerPanel
+        isLoading={isGeneratingAnswer}
+        error={answerError}
+        answer={generatedAnswer}
+        citations={answerCitations}
+        model={answerModel}
+        hasRequested={hasRequestedAnswer}
+      />
+
       <RetrievalContextPreview
         promptContext={retrievalContext.promptContext}
         sourceCount={retrievalContext.sourceCount}

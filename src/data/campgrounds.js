@@ -10,7 +10,7 @@ export const campgrounds = [
     id: 'emerald-bay-eagle-point',
     name: 'Eagle Point Campground (Emerald Bay SP)',
     region: 'Lake Tahoe',
-    sourceUrl: 'https://www.parks.ca.gov/?page_id=970',
+    sourceUrl: 'https://www.parks.ca.gov/?page_id=506',
     reservationUrl: 'https://www.reservecalifornia.com/',
     amenities: ['Restrooms', 'Showers', 'Bear boxes', 'Beach access'],
     rules: ['Maximum 8 people per campsite', 'Two vehicles per site', 'Quiet hours enforced'],

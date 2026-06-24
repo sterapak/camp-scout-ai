@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import * as askClient from '../api/askClient.js'
 import RetrievalPlaygroundPage from './RetrievalPlaygroundPage'
 
 jest.mock('../api/askClient.js', () => ({
@@ -33,6 +34,7 @@ describe('RetrievalPlaygroundPage', () => {
     expect(
       screen.getByText(/Enter a question and retrieve knowledge to preview/)
     ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Generate answer' })).toBeInTheDocument()
   })
 
   it('retrieves and displays knowledge documents for a question', async () => {
