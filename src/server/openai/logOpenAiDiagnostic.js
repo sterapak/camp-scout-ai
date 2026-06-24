@@ -1,5 +1,5 @@
 /**
- * Safe diagnostic logging for OpenAI answer provider configuration and failures.
+ * Temporary diagnostic logging for OpenAI answer provider failures.
  * Never logs secrets such as API keys.
  */
 
@@ -33,9 +33,6 @@ export function describeOpenAiApiKey(apiKey) {
 /**
  * @param {string} scope
  * @param {{
- *   explicitProvider?: string | undefined,
- *   envProvider?: string | undefined,
- *   resolvedProvider?: string,
  *   provider?: string,
  *   model?: string,
  *   responseStatus?: number,
@@ -47,10 +44,7 @@ export function describeOpenAiApiKey(apiKey) {
 export function logOpenAiDiagnostic(scope, details = {}) {
   const payload = {
     scope,
-    explicitProvider: details.explicitProvider ?? null,
-    envProvider: details.envProvider ?? process.env.OPENAI_ANSWER_PROVIDER ?? '(unset)',
-    resolvedProvider: details.resolvedProvider ?? details.provider ?? null,
-    provider: details.provider ?? details.resolvedProvider ?? 'openai',
+    provider: details.provider ?? 'openai',
     model: details.model ?? '(unknown)',
     responseStatus: details.responseStatus ?? null,
     errorCode: details.errorCode ?? null,
