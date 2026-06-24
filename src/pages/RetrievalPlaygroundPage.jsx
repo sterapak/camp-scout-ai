@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react'
+import { askQuestion } from '../api/askClient.js'
+import AskAnswerPanel from '../components/AskAnswerPanel'
 import RetrievalContextPreview from '../components/RetrievalContextPreview'
 import RetrievalFilters from '../components/RetrievalFilters'
 import RetrievalResultCard from '../components/RetrievalResultCard'
@@ -13,6 +15,12 @@ export default function RetrievalPlaygroundPage() {
   const [campgroundId, setCampgroundId] = useState('')
   const [documentType, setDocumentType] = useState('')
   const [submittedQuery, setSubmittedQuery] = useState(null)
+  const [isGeneratingAnswer, setIsGeneratingAnswer] = useState(false)
+  const [answerError, setAnswerError] = useState(null)
+  const [generatedAnswer, setGeneratedAnswer] = useState(null)
+  const [answerCitations, setAnswerCitations] = useState([])
+  const [answerModel, setAnswerModel] = useState(null)
+  const [hasRequestedAnswer, setHasRequestedAnswer] = useState(false)
 
   const campgroundOptions = useMemo(
     () =>
@@ -55,6 +63,46 @@ export default function RetrievalPlaygroundPage() {
     })
   }
 
+  async function handleGenerateAnswer() {
+    const trimmedQuestion = question.trim()
+    if (!trimmedQuestion || isGeneratingAnswer) {
+      return
+    }
+
+    setHasRequestedAnswer(true)
+    setIsGeneratingAnswer(true)
+    setAnswerError(null)
+    setGeneratedAnswer(null)
+    setAnswerCitations([])
+    setAnswerModel(null)
+
+    try {
+      const response = await askQuestion({
+        question: trimmedQuestion,
+        campgroundId,
+        documentType,
+      })
+
+      if (response.status === 'insufficient_context') {
+        setGeneratedAnswer(response.message)
+        setAnswerCitations(response.citations)
+        return
+      }
+
+      setGeneratedAnswer(response.answer)
+      setAnswerCitations(response.citations)
+      setAnswerModel(response.model)
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : 'An unexpected error occurred.'
+      setAnswerError(message)
+    } finally {
+      setIsGeneratingAnswer(false)
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div>
@@ -75,6 +123,8 @@ export default function RetrievalPlaygroundPage() {
         onCampgroundChange={setCampgroundId}
         onDocumentTypeChange={setDocumentType}
         onSubmit={handleRetrieve}
+        onGenerateAnswer={handleGenerateAnswer}
+        isGeneratingAnswer={isGeneratingAnswer}
       />
 
       {submittedQuery && (
@@ -95,6 +145,15 @@ export default function RetrievalPlaygroundPage() {
           </div>
         </section>
       )}
+
+      <AskAnswerPanel
+        isLoading={isGeneratingAnswer}
+        error={answerError}
+        answer={generatedAnswer}
+        citations={answerCitations}
+        model={answerModel}
+        hasRequested={hasRequestedAnswer}
+      />
 
       <RetrievalContextPreview
         promptContext={retrievalContext.promptContext}
