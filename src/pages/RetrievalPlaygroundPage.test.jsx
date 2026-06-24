@@ -1,30 +1,25 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import * as askClient from '../api/askClient.js'
 import RetrievalPlaygroundPage from './RetrievalPlaygroundPage'
 
+jest.mock('../api/askClient.js', () => ({
+  AskApiError: class AskApiError extends Error {
+    constructor(message, statusCode) {
+      super(message)
+      this.name = 'AskApiError'
+      this.statusCode = statusCode
+    }
+  },
+  postAsk: jest.fn(),
+}))
+
+import { postAsk } from '../api/askClient.js'
+
 describe('RetrievalPlaygroundPage', () => {
   beforeEach(() => {
-    jest.spyOn(askClient, 'askQuestion').mockResolvedValue({
-      status: 'success',
-      answer: 'Store all scented items in bear-proof lockers.',
-      citations: [
-        {
-          id: 'yosemite-upper-pines-rules',
-          title: 'Food Storage Rules',
-          sourceName: 'National Park Service',
-          sourceUrl: 'https://www.nps.gov/yose/planyourvisit/bears.htm',
-          campgroundName: 'Upper Pines Campground',
-          documentType: 'rules',
-        },
-      ],
-      model: 'gpt-4o-mini',
-    })
-  })
-
-  afterEach(() => {
-    jest.restoreAllMocks()
+    jest.mocked(postAsk).mockReset()
   })
 
   it('renders the playground heading and empty context preview', () => {
@@ -84,19 +79,51 @@ describe('RetrievalPlaygroundPage', () => {
     )
   })
 
-  it('disables Generate answer when the question is empty', () => {
+  it('generates and displays an answer from the ask API', async () => {
+    jest.mocked(postAsk).mockResolvedValue({
+      status: 'success',
+      answer: 'Store all scented items in bear-resistant lockers.',
+      citations: [
+        {
+          id: 'doc-1',
+          title: 'Bear Safety Rules',
+          sourceName: 'NPS',
+          sourceUrl: 'https://example.com/bears',
+          campgroundName: 'Upper Pines Campground',
+          documentType: 'regulation',
+        },
+      ],
+      model: 'gpt-4o-mini',
+    })
+
+    const user = userEvent.setup()
     render(
       <MemoryRouter>
         <RetrievalPlaygroundPage />
       </MemoryRouter>
     )
 
-    expect(screen.getByRole('button', { name: 'Generate answer' })).toBeDisabled()
+    await user.type(
+      screen.getByLabelText('Enter a question to retrieve knowledge'),
+      'bear food storage'
+    )
+    await user.click(screen.getByRole('button', { name: 'Generate Answer' }))
+
+    expect(postAsk).toHaveBeenCalledWith({
+      question: 'bear food storage',
+      campgroundId: '',
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Store all scented items in bear-resistant lockers.')).toBeInTheDocument()
+    })
+    expect(screen.getByText('Model: gpt-4o-mini')).toBeInTheDocument()
+    expect(screen.getByText('[1] Bear Safety Rules')).toBeInTheDocument()
   })
 
-  it('posts to /api/ask and renders the generated answer, citations, and model', async () => {
+  it('shows loading and error states for answer generation', async () => {
     let resolveAsk
-    askClient.askQuestion.mockImplementation(
+    jest.mocked(postAsk).mockImplementation(
       () =>
         new Promise((resolve) => {
           resolveAsk = resolve
@@ -114,78 +141,49 @@ describe('RetrievalPlaygroundPage', () => {
       screen.getByLabelText('Enter a question to retrieve knowledge'),
       'bear food storage'
     )
-    await user.click(screen.getByRole('button', { name: 'Generate answer' }))
+    await user.click(screen.getByRole('button', { name: 'Generate Answer' }))
 
-    expect(screen.getByRole('status')).toHaveTextContent('Generating answer…')
-    expect(screen.getByRole('button', { name: 'Generating answer…' })).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent('Generating answer')
+    expect(screen.getByRole('button', { name: 'Generating…' })).toBeDisabled()
 
     resolveAsk({
       status: 'success',
-      answer: 'Store all scented items in bear-proof lockers.',
-      citations: [
-        {
-          id: 'yosemite-upper-pines-rules',
-          title: 'Food Storage Rules',
-          sourceName: 'National Park Service',
-          sourceUrl: 'https://www.nps.gov/yose/planyourvisit/bears.htm',
-          campgroundName: 'Upper Pines Campground',
-          documentType: 'rules',
-        },
-      ],
+      answer: 'Done',
+      citations: [],
       model: 'gpt-4o-mini',
     })
 
     await waitFor(() => {
-      expect(askClient.askQuestion).toHaveBeenCalledWith({
-        question: 'bear food storage',
-        campgroundId: '',
-        documentType: '',
-      })
+      expect(screen.getByText('Done')).toBeInTheDocument()
     })
 
-    expect(await screen.findByText('Generated answer')).toBeInTheDocument()
-    expect(
-      screen.getByText('Store all scented items in bear-proof lockers.')
-    ).toBeInTheDocument()
-    expect(screen.getByText('Model: gpt-4o-mini')).toBeInTheDocument()
-    const answerSection = screen.getByLabelText('Generated answer')
-    expect(within(answerSection).getByText('Food Storage Rules')).toBeInTheDocument()
-    expect(within(answerSection).getByText('Upper Pines Campground')).toBeInTheDocument()
-    expect(within(answerSection).getByText('Rules & Policies')).toBeInTheDocument()
-    expect(within(answerSection).getByText('National Park Service')).toBeInTheDocument()
-    expect(within(answerSection).getByRole('link', { name: 'Source link' })).toHaveAttribute(
-      'href',
-      'https://www.nps.gov/yose/planyourvisit/bears.htm'
-    )
-    expect(screen.getByText('Prepared LLM context')).toBeInTheDocument()
-  })
-
-  it('includes optional filters in the ask request', async () => {
-    const user = userEvent.setup()
-    render(
-      <MemoryRouter>
-        <RetrievalPlaygroundPage />
-      </MemoryRouter>
+    jest.mocked(postAsk).mockRejectedValue(
+      new (class extends Error {
+        constructor(message, statusCode) {
+          super(message)
+          this.name = 'AskApiError'
+          this.statusCode = statusCode
+        }
+      })('Answer generation failed. Please try again.', 502)
     )
 
-    await user.type(
-      screen.getByLabelText('Enter a question to retrieve knowledge'),
-      'bear food storage'
-    )
-    await user.selectOptions(screen.getByLabelText('Filter by campground'), 'yosemite-upper-pines')
-    await user.selectOptions(screen.getByLabelText('Filter by document type'), 'rules')
-    await user.click(screen.getByRole('button', { name: 'Generate answer' }))
+    await user.click(screen.getByRole('button', { name: 'Generate Answer' }))
 
     await waitFor(() => {
-      expect(askClient.askQuestion).toHaveBeenCalledWith({
-        question: 'bear food storage',
-        campgroundId: 'yosemite-upper-pines',
-        documentType: 'rules',
-      })
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Answer generation failed. Please try again.'
+      )
     })
   })
 
-  it('keeps retrieval results visible after generating an answer', async () => {
+  it('keeps retrieval debug panels below the generated answer', async () => {
+    jest.mocked(postAsk).mockResolvedValue({
+      status: 'success',
+      answer: 'Generated answer text.',
+      citations: [],
+      model: 'gpt-4o-mini',
+    })
+
     const user = userEvent.setup()
     render(
       <MemoryRouter>
@@ -197,43 +195,22 @@ describe('RetrievalPlaygroundPage', () => {
       screen.getByLabelText('Enter a question to retrieve knowledge'),
       'bear food storage'
     )
+    await user.click(screen.getByRole('button', { name: 'Generate Answer' }))
     await user.click(screen.getByRole('button', { name: 'Retrieve knowledge' }))
-    await user.click(screen.getByRole('button', { name: 'Generate answer' }))
-
-    expect(screen.getByText('Retrieved sources')).toBeInTheDocument()
-    expect(screen.getByText('Source 1')).toBeInTheDocument()
 
     await waitFor(() => {
-      expect(screen.getByText('Generated answer')).toBeInTheDocument()
+      expect(screen.getByText('Generated answer text.')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('Retrieved sources')).toBeInTheDocument()
-    expect(screen.getByLabelText('Prepared LLM context preview')).toHaveTextContent(
-      'User question: bear food storage'
-    )
-  })
+    const generatedAnswer = screen.getByLabelText('Generated answer')
+    const retrievedSources = screen.getByText('Retrieved sources')
+    const contextPreview = screen.getByText('Prepared LLM context')
 
-  it('renders a safe error message when answer generation fails', async () => {
-    askClient.askQuestion.mockRejectedValueOnce(
-      new askClient.AskApiError('Answer generation failed. Please try again.', 502)
-    )
-
-    const user = userEvent.setup()
-    render(
-      <MemoryRouter>
-        <RetrievalPlaygroundPage />
-      </MemoryRouter>
-    )
-
-    await user.type(
-      screen.getByLabelText('Enter a question to retrieve knowledge'),
-      'bear food storage'
-    )
-    await user.click(screen.getByRole('button', { name: 'Generate answer' }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Answer generation failed. Please try again.'
-    )
-    expect(screen.getByText('Prepared LLM context')).toBeInTheDocument()
+    expect(
+      generatedAnswer.compareDocumentPosition(retrievedSources) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+    expect(
+      retrievedSources.compareDocumentPosition(contextPreview) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
   })
 })

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
-import { askQuestion } from '../api/askClient.js'
-import AskAnswerPanel from '../components/AskAnswerPanel'
+import { AskApiError, postAsk } from '../api/askClient.js'
+import GeneratedAnswerPanel from '../components/GeneratedAnswerPanel'
 import RetrievalContextPreview from '../components/RetrievalContextPreview'
 import RetrievalFilters from '../components/RetrievalFilters'
 import RetrievalResultCard from '../components/RetrievalResultCard'
@@ -15,12 +15,7 @@ export default function RetrievalPlaygroundPage() {
   const [campgroundId, setCampgroundId] = useState('')
   const [documentType, setDocumentType] = useState('')
   const [submittedQuery, setSubmittedQuery] = useState(null)
-  const [isGeneratingAnswer, setIsGeneratingAnswer] = useState(false)
-  const [answerError, setAnswerError] = useState(null)
-  const [generatedAnswer, setGeneratedAnswer] = useState(null)
-  const [answerCitations, setAnswerCitations] = useState([])
-  const [answerModel, setAnswerModel] = useState(null)
-  const [hasRequestedAnswer, setHasRequestedAnswer] = useState(false)
+  const [answerState, setAnswerState] = useState({ status: 'idle' })
 
   const campgroundOptions = useMemo(
     () =>
@@ -65,41 +60,37 @@ export default function RetrievalPlaygroundPage() {
 
   async function handleGenerateAnswer() {
     const trimmedQuestion = question.trim()
-    if (!trimmedQuestion || isGeneratingAnswer) {
-      return
-    }
+    if (!trimmedQuestion) return
 
-    setHasRequestedAnswer(true)
-    setIsGeneratingAnswer(true)
-    setAnswerError(null)
-    setGeneratedAnswer(null)
-    setAnswerCitations([])
-    setAnswerModel(null)
+    setAnswerState({ status: 'loading' })
 
     try {
-      const response = await askQuestion({
+      const result = await postAsk({
         question: trimmedQuestion,
         campgroundId,
-        documentType,
       })
 
-      if (response.status === 'insufficient_context') {
-        setGeneratedAnswer(response.message)
-        setAnswerCitations(response.citations)
+      if (result.status === 'insufficient_context') {
+        setAnswerState({
+          status: 'insufficient_context',
+          message: result.message,
+          citations: result.citations,
+        })
         return
       }
 
-      setGeneratedAnswer(response.answer)
-      setAnswerCitations(response.citations)
-      setAnswerModel(response.model)
+      setAnswerState({
+        status: 'success',
+        answer: result.answer,
+        citations: result.citations,
+        model: result.model,
+      })
     } catch (error) {
-      const message =
-        error instanceof Error && error.message
+      const errorMessage =
+        error instanceof AskApiError
           ? error.message
-          : 'An unexpected error occurred.'
-      setAnswerError(message)
-    } finally {
-      setIsGeneratingAnswer(false)
+          : 'Answer generation failed. Please try again.'
+      setAnswerState({ status: 'error', errorMessage })
     }
   }
 
@@ -108,8 +99,9 @@ export default function RetrievalPlaygroundPage() {
       <div>
         <h2 className="text-2xl font-semibold text-gray-900">Knowledge Retrieval Playground</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Test keyword-based retrieval against official campground knowledge documents. Results are
-          ranked by relevance and formatted for future LLM integration.
+          Test keyword-based retrieval and grounded answer generation against official campground
+          knowledge documents. Use Retrieve knowledge for debug panels, or Generate Answer to call
+          the ask API.
         </p>
       </div>
 
@@ -124,7 +116,16 @@ export default function RetrievalPlaygroundPage() {
         onDocumentTypeChange={setDocumentType}
         onSubmit={handleRetrieve}
         onGenerateAnswer={handleGenerateAnswer}
-        isGeneratingAnswer={isGeneratingAnswer}
+        isGeneratingAnswer={answerState.status === 'loading'}
+      />
+
+      <GeneratedAnswerPanel
+        status={answerState.status}
+        answer={answerState.answer}
+        message={answerState.message}
+        citations={answerState.citations}
+        model={answerState.model}
+        errorMessage={answerState.errorMessage}
       />
 
       {submittedQuery && (
