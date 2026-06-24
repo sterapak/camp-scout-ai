@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react'
+import { AskApiError, postAsk } from '../api/askClient.js'
+import GeneratedAnswerPanel from '../components/GeneratedAnswerPanel'
 import RetrievalContextPreview from '../components/RetrievalContextPreview'
 import RetrievalFilters from '../components/RetrievalFilters'
 import RetrievalResultCard from '../components/RetrievalResultCard'
@@ -13,6 +15,7 @@ export default function RetrievalPlaygroundPage() {
   const [campgroundId, setCampgroundId] = useState('')
   const [documentType, setDocumentType] = useState('')
   const [submittedQuery, setSubmittedQuery] = useState(null)
+  const [answerState, setAnswerState] = useState({ status: 'idle' })
 
   const campgroundOptions = useMemo(
     () =>
@@ -55,13 +58,50 @@ export default function RetrievalPlaygroundPage() {
     })
   }
 
+  async function handleGenerateAnswer() {
+    const trimmedQuestion = question.trim()
+    if (!trimmedQuestion) return
+
+    setAnswerState({ status: 'loading' })
+
+    try {
+      const result = await postAsk({
+        question: trimmedQuestion,
+        campgroundId,
+      })
+
+      if (result.status === 'insufficient_context') {
+        setAnswerState({
+          status: 'insufficient_context',
+          message: result.message,
+          citations: result.citations,
+        })
+        return
+      }
+
+      setAnswerState({
+        status: 'success',
+        answer: result.answer,
+        citations: result.citations,
+        model: result.model,
+      })
+    } catch (error) {
+      const errorMessage =
+        error instanceof AskApiError
+          ? error.message
+          : 'Answer generation failed. Please try again.'
+      setAnswerState({ status: 'error', errorMessage })
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div>
         <h2 className="text-2xl font-semibold text-gray-900">Knowledge Retrieval Playground</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Test keyword-based retrieval against official campground knowledge documents. Results are
-          ranked by relevance and formatted for future LLM integration.
+          Test keyword-based retrieval and grounded answer generation against official campground
+          knowledge documents. Use Retrieve knowledge for debug panels, or Generate Answer to call
+          the ask API.
         </p>
       </div>
 
@@ -75,6 +115,17 @@ export default function RetrievalPlaygroundPage() {
         onCampgroundChange={setCampgroundId}
         onDocumentTypeChange={setDocumentType}
         onSubmit={handleRetrieve}
+        onGenerateAnswer={handleGenerateAnswer}
+        isGeneratingAnswer={answerState.status === 'loading'}
+      />
+
+      <GeneratedAnswerPanel
+        status={answerState.status}
+        answer={answerState.answer}
+        message={answerState.message}
+        citations={answerState.citations}
+        model={answerState.model}
+        errorMessage={answerState.errorMessage}
       />
 
       {submittedQuery && (

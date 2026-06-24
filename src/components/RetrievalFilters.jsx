@@ -13,6 +13,8 @@ import { getDocumentTypeLabel } from '../data/knowledgeSchema.js'
  *   onCampgroundChange: (value: string) => void
  *   onDocumentTypeChange: (value: string) => void
  *   onSubmit: () => void
+ *   onGenerateAnswer: () => void
+ *   isGeneratingAnswer?: boolean
  * }} props
  */
 export default function RetrievalFilters({
@@ -25,6 +27,8 @@ export default function RetrievalFilters({
   onCampgroundChange,
   onDocumentTypeChange,
   onSubmit,
+  onGenerateAnswer,
+  isGeneratingAnswer = false,
 }) {
   const selectClass =
     'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600'
@@ -96,12 +100,22 @@ export default function RetrievalFilters({
         </label>
       </div>
 
-      <button
-        type="submit"
-        className="inline-flex items-center justify-center rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2"
-      >
-        Retrieve knowledge
-      </button>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="submit"
+          className="inline-flex items-center justify-center rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2"
+        >
+          Retrieve knowledge
+        </button>
+        <button
+          type="button"
+          onClick={onGenerateAnswer}
+          disabled={!question.trim() || isGeneratingAnswer}
+          className="inline-flex items-center justify-center rounded-lg border border-green-700 bg-white px-4 py-2 text-sm font-medium text-green-800 hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-white"
+        >
+          {isGeneratingAnswer ? 'Generating…' : 'Generate Answer'}
+        </button>
+      </div>
     </form>
   )
 }
