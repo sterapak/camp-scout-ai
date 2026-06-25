@@ -95,7 +95,7 @@ describe('readJsonResponseBody', () => {
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         input: 'Question',
-        max_output_tokens: 512,
+        max_output_tokens: 800,
         store: false,
       }),
     })

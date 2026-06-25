@@ -4,7 +4,7 @@
  */
 
 export const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
-export const DEFAULT_MAX_OUTPUT_TOKENS = 512
+export const DEFAULT_MAX_OUTPUT_TOKENS = 800
 
 /**
  * @typedef {Object} AnswerGenerationRequest
