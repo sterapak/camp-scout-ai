@@ -113,4 +113,9 @@ describe('campgroundData', () => {
       expect(c.tags).toContain(tag)
     })
   })
+
+  it('uses the live Emerald Bay State Park page for Eagle Point official info', () => {
+    const campground = getCampgroundById('emerald-bay-eagle-point')
+    expect(campground?.sourceUrl).toBe('https://www.parks.ca.gov/?page_id=506')
+  })
 })
