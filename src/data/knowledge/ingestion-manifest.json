@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "campgrounds": {
+    "mount-tamalpais-pantoll": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=471",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:43:35.023Z",
+      "contentHash": "280843565afbb77491c799299aa2083c39569c03cfd2cf43bddfe4c8601eb411"
+    }
+  }
+}

@@ -8,4 +8,4 @@ Official campground knowledge organized by campground and document type.
 campgrounds/{campground-id}/{documentType}.js
 ```
 
-Each file exports one `KnowledgeDocument`. See `docs/KNOWLEDGE_REPOSITORY.md` for full documentation.
+Each file exports one `KnowledgeDocument`. See `docs/CAMPGROUND_INGESTION.md` for automated refresh and `docs/RAG_ARCHITECTURE.md` for retrieval design.
