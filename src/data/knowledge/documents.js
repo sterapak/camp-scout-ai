@@ -27,6 +27,16 @@ import humboldtRedwoodsBurlingtonDescription from './campgrounds/humboldt-redwoo
 import humboldtRedwoodsBurlingtonRules from './campgrounds/humboldt-redwoods-burlington/rules.js'
 import humboldtRedwoodsBurlingtonReservation from './campgrounds/humboldt-redwoods-burlington/reservation.js'
 import humboldtRedwoodsBurlingtonAlert from './campgrounds/humboldt-redwoods-burlington/alert.js'
+import iceHouseReservoirDescriptionSource1 from './campgrounds/ice-house-reservoir/description--source-1.js'
+import iceHouseReservoirDescriptionSource2 from './campgrounds/ice-house-reservoir/description--source-2.js'
+import iceHouseReservoirDescriptionSource3 from './campgrounds/ice-house-reservoir/description--source-3.js'
+import iceHouseReservoirRulesSource1 from './campgrounds/ice-house-reservoir/rules--source-1.js'
+import iceHouseReservoirRulesSource2 from './campgrounds/ice-house-reservoir/rules--source-2.js'
+import iceHouseReservoirRulesSource3 from './campgrounds/ice-house-reservoir/rules--source-3.js'
+import iceHouseReservoirReservationSource1 from './campgrounds/ice-house-reservoir/reservation--source-1.js'
+import iceHouseReservoirReservationSource2 from './campgrounds/ice-house-reservoir/reservation--source-2.js'
+import iceHouseReservoirReservationSource3 from './campgrounds/ice-house-reservoir/reservation--source-3.js'
+import iceHouseReservoirAlertSource3 from './campgrounds/ice-house-reservoir/alert--source-3.js'
 import lakeOrovilleLoaferCreekDescription from './campgrounds/lake-oroville-loafer-creek/description.js'
 import lakeOrovilleLoaferCreekRules from './campgrounds/lake-oroville-loafer-creek/rules.js'
 import lakeOrovilleLoaferCreekReservation from './campgrounds/lake-oroville-loafer-creek/reservation.js'
@@ -57,6 +67,13 @@ import redwoodJedediahSmithReservation from './campgrounds/redwood-jedediah-smit
 import samuelPTaylorDescription from './campgrounds/samuel-p-taylor/description.js'
 import samuelPTaylorRules from './campgrounds/samuel-p-taylor/rules.js'
 import samuelPTaylorReservation from './campgrounds/samuel-p-taylor/reservation.js'
+import silverLakeWestDescriptionSource1 from './campgrounds/silver-lake-west/description--source-1.js'
+import silverLakeWestDescriptionSource2 from './campgrounds/silver-lake-west/description--source-2.js'
+import silverLakeWestRulesSource1 from './campgrounds/silver-lake-west/rules--source-1.js'
+import silverLakeWestRulesSource2 from './campgrounds/silver-lake-west/rules--source-2.js'
+import silverLakeWestReservationSource1 from './campgrounds/silver-lake-west/reservation--source-1.js'
+import silverLakeWestReservationSource2 from './campgrounds/silver-lake-west/reservation--source-2.js'
+import silverLakeWestAlertSource1 from './campgrounds/silver-lake-west/alert--source-1.js'
 import sonomaCoastBodegaDunesDescription from './campgrounds/sonoma-coast-bodega-dunes/description.js'
 import sonomaCoastBodegaDunesRules from './campgrounds/sonoma-coast-bodega-dunes/rules.js'
 import sonomaCoastBodegaDunesReservation from './campgrounds/sonoma-coast-bodega-dunes/reservation.js'
@@ -98,6 +115,16 @@ export const knowledgeDocuments = [
   humboldtRedwoodsBurlingtonRules,
   humboldtRedwoodsBurlingtonReservation,
   humboldtRedwoodsBurlingtonAlert,
+  iceHouseReservoirDescriptionSource1,
+  iceHouseReservoirDescriptionSource2,
+  iceHouseReservoirDescriptionSource3,
+  iceHouseReservoirRulesSource1,
+  iceHouseReservoirRulesSource2,
+  iceHouseReservoirRulesSource3,
+  iceHouseReservoirReservationSource1,
+  iceHouseReservoirReservationSource2,
+  iceHouseReservoirReservationSource3,
+  iceHouseReservoirAlertSource3,
   lakeOrovilleLoaferCreekDescription,
   lakeOrovilleLoaferCreekRules,
   lakeOrovilleLoaferCreekReservation,
@@ -128,6 +155,13 @@ export const knowledgeDocuments = [
   samuelPTaylorDescription,
   samuelPTaylorRules,
   samuelPTaylorReservation,
+  silverLakeWestDescriptionSource1,
+  silverLakeWestDescriptionSource2,
+  silverLakeWestRulesSource1,
+  silverLakeWestRulesSource2,
+  silverLakeWestReservationSource1,
+  silverLakeWestReservationSource2,
+  silverLakeWestAlertSource1,
   sonomaCoastBodegaDunesDescription,
   sonomaCoastBodegaDunesRules,
   sonomaCoastBodegaDunesReservation,

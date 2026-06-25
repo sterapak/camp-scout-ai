@@ -37,6 +37,32 @@
       "lastFetchedAt": "2026-06-25T17:52:18.412Z",
       "contentHash": "c7d1f5c951fbc7a357e0dee0992ed346b898fcbbf279a2c63dff721d7b73619c"
     },
+    "ice-house-reservoir": {
+      "sourceUrl": "https://www.pge.com/en/about/in-your-community/recreational-areas.html",
+      "sourceName": "Pacific Gas and Electric Company",
+      "lastFetchedAt": "2025-06-25T12:00:00.000Z",
+      "contentHash": "7900b08ebb857587ef58a2891110d3cf9a575c32c3c1c911a0eef2f41362131a",
+      "sources": [
+        {
+          "name": "Pacific Gas and Electric Company",
+          "url": "https://www.pge.com/en/about/in-your-community/recreational-areas.html",
+          "sourceType": "operator",
+          "priority": 1
+        },
+        {
+          "name": "U.S. Forest Service",
+          "url": "https://www.fs.usda.gov/r05/eldorado/recreation/ice-house-campground",
+          "sourceType": "government",
+          "priority": 2
+        },
+        {
+          "name": "Recreation.gov",
+          "url": "https://www.recreation.gov/camping/campgrounds/232061",
+          "sourceType": "reservation",
+          "priority": 3
+        }
+      ]
+    },
     "lake-oroville-loafer-creek": {
       "sourceUrl": "https://www.parks.ca.gov/?page_id=462",
       "sourceName": "California State Parks",
@@ -90,6 +116,26 @@
       "sourceName": "California State Parks",
       "lastFetchedAt": "2026-06-25T17:52:18.951Z",
       "contentHash": "9940316dafe06f956b4faecf7961f15d776aa59ef76f387cbddd4a43e0cbace8"
+    },
+    "silver-lake-west": {
+      "sourceUrl": "https://www.eid.org/recreation/silver-lake",
+      "sourceName": "El Dorado Irrigation District",
+      "lastFetchedAt": "2025-06-25T12:00:00.000Z",
+      "contentHash": "d14beef6fc4b696c78988c3c317d7712ee86d6be0f92488d312cadfdf8ceb78f",
+      "sources": [
+        {
+          "name": "El Dorado Irrigation District",
+          "url": "https://www.eid.org/recreation/silver-lake",
+          "sourceType": "operator",
+          "priority": 1
+        },
+        {
+          "name": "U.S. Forest Service",
+          "url": "https://www.fs.usda.gov/r05/eldorado/recreation/silver-lake-campground-east",
+          "sourceType": "government",
+          "priority": 2
+        }
+      ]
     },
     "sonoma-coast-bodega-dunes": {
       "sourceUrl": "https://www.parks.ca.gov/?page_id=451",
