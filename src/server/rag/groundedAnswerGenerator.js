@@ -7,9 +7,10 @@
 import { retrieveDocuments } from '../../data/knowledge/knowledgeRetrieval.js'
 import { buildRetrievalContext } from '../../data/knowledge/retrievalContext.js'
 import { createAnswerProvider } from '../openai/createAnswerProvider.js'
+import { DEFAULT_MAX_OUTPUT_TOKENS } from '../openai/answerProvider.js'
 
 export const DEFAULT_TOP_DOCUMENT_COUNT = 3
-export const GROUNDED_ANSWER_MAX_OUTPUT_TOKENS = 256
+export const GROUNDED_ANSWER_MAX_OUTPUT_TOKENS = DEFAULT_MAX_OUTPUT_TOKENS
 
 export const INSUFFICIENT_CONTEXT_STATUS = 'insufficient_context'
 export const SUCCESS_STATUS = 'success'
