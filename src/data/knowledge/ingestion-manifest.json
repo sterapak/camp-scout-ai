@@ -118,8 +118,11 @@
     "yosemite-upper-pines": {
       "sourceUrl": "https://www.nps.gov/yose/planyourvisit/campgrounds.htm",
       "sourceName": "National Park Service",
-      "lastFetchedAt": "2026-06-25T17:52:21.348Z",
-      "contentHash": "1ca23f118412fb0ee01335647f4e10086bde9a6716d6f4979ac7696e9552c404"
+      "lastFetchedAt": "2026-06-25T19:15:30.829Z",
+      "contentHash": "b5198dea476062f9e5f624b9c402e2639496478d84f6aacd33c75415ed8e414c",
+      "supplementalSourceUrls": [
+        "https://www.nps.gov/yose/planyourvisit/bears.htm"
+      ]
     }
   }
 }

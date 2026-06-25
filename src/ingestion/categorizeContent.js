@@ -28,6 +28,12 @@ const CATEGORY_PATTERNS = {
     /\bdogs?\b/i,
     /\bbear/i,
     /\bfood storage\b/i,
+    /\bfood locker/i,
+    /\bbear[- ]resistant\b/i,
+    /\bbear canister/i,
+    /\bmetal locker/i,
+    /\bscented items\b/i,
+    /\btoiletries\b/i,
     /\bmaximum\b/i,
     /\bprohibited\b/i,
     /\bnot permitted\b/i,
@@ -64,6 +70,11 @@ const CATEGORY_PATTERNS = {
     /\bemergency\b/i,
     /\bincident update\b/i,
     /\bseasonal alert\b/i,
+    /\bblack bear/i,
+    /\bimpoundment\b/i,
+    /\bnever feed\b/i,
+    /\bbecome aggressive\b/i,
+    /\bhuman food\b/i,
   ],
 }
 
@@ -89,6 +100,9 @@ const NOISE_PATTERNS = [
   /^special events/i,
   /^filming & photography$/i,
   /^weddings at state parks$/i,
+  /^official websites use \.gov/i,
+  /^secure \.gov websites use https/i,
+  /^share sensitive information only on official, secure websites$/i,
 ]
 
 /**
@@ -166,6 +180,7 @@ export function categorizeParagraphs(paragraphs) {
   }
 
   ensureMinimumCoverage(categorized, usableParagraphs)
+  sortCategorizedParagraphs(categorized)
 
   return categorized
 }
@@ -214,4 +229,52 @@ export function getDocumentTypesToWrite(categorized) {
   }
 
   return types.filter((documentType) => KNOWLEDGE_DOCUMENT_TYPES.includes(documentType))
+}
+
+/**
+ * Prioritizes high-value paragraphs within each document category.
+ * @param {CategorizedParagraphs} categorized
+ */
+export function sortCategorizedParagraphs(categorized) {
+  categorized.rules = sortParagraphs(categorized.rules, scoreRulesParagraphPriority)
+  categorized.alert = sortParagraphs(categorized.alert, scoreAlertParagraphPriority)
+}
+
+/**
+ * @param {string[]} paragraphs
+ * @param {(paragraph: string) => number} scoreFn
+ * @returns {string[]}
+ */
+function sortParagraphs(paragraphs, scoreFn) {
+  return [...paragraphs].sort((left, right) => scoreFn(right) - scoreFn(left))
+}
+
+/**
+ * @param {string} paragraph
+ * @returns {number}
+ */
+export function scoreRulesParagraphPriority(paragraph) {
+  let score = 0
+
+  if (/food storage/i.test(paragraph)) score += 4
+  if (/bear/i.test(paragraph)) score += 3
+  if (/locker|canister|bear-resistant/i.test(paragraph)) score += 3
+  if (/toiletries|scented items/i.test(paragraph)) score += 2
+  if (/federal law|impoundment|citation/i.test(paragraph)) score += 2
+
+  return score
+}
+
+/**
+ * @param {string} paragraph
+ * @returns {number}
+ */
+export function scoreAlertParagraphPriority(paragraph) {
+  let score = 0
+
+  if (/alert|warning|advisory/i.test(paragraph)) score += 3
+  if (/bear/i.test(paragraph)) score += 3
+  if (/impoundment|aggressive|never feed/i.test(paragraph)) score += 2
+
+  return score
 }

@@ -34,3 +34,22 @@ export function resolveCampgroundIdsFromArgs(cliArgs) {
 export function getAllIngestionCampgroundIds() {
   return [...INGESTION_CAMPGROUND_IDS]
 }
+
+/**
+ * Additional official source pages merged during ingestion for specific campgrounds.
+ * Keys are campground IDs; values must be HTTPS official agency URLs.
+ */
+export const INGESTION_SUPPLEMENTAL_SOURCES = {
+  'yosemite-upper-pines': [
+    'https://www.nps.gov/yose/planyourvisit/bears.htm',
+  ],
+}
+
+/**
+ * Returns supplemental official source URLs for a campground, if configured.
+ * @param {string} campgroundId
+ * @returns {string[]}
+ */
+export function getSupplementalSourceUrls(campgroundId) {
+  return INGESTION_SUPPLEMENTAL_SOURCES[campgroundId] ?? []
+}

@@ -77,7 +77,12 @@ export function decodeHtmlEntities(text) {
  * @returns {string}
  */
 export function normalizeParagraphText(text) {
-  return decodeHtmlEntities(text.replace(/\s+/g, ' ').trim())
+  return decodeHtmlEntities(
+    text
+      .replace(/\.([A-Z])/g, '. $1')
+      .replace(/\s+/g, ' ')
+      .trim(),
+  )
 }
 
 /**

@@ -5,10 +5,10 @@ import { campgrounds } from '../data/campgrounds.js'
 import { isValidKnowledgeDocument } from '../data/knowledgeSchema.js'
 import { categorizeContent } from './categorizeContent.js'
 import { computeContentHash } from './contentHash.js'
-import { extractReadableText } from './extractContent.js'
-import { fetchSource } from './fetchSource.js'
+import { fetchCampgroundReadableText } from './fetchCampgroundContent.js'
 import { formatKnowledgeDocumentFile } from './formatDocumentFile.js'
 import { generateKnowledgeDocuments } from './generateDocuments.js'
+import { getSupplementalSourceUrls } from './ingestionConfig.js'
 import {
   DEFAULT_MANIFEST_PATH,
   getCampgroundRecord,
@@ -91,17 +91,17 @@ export async function ingestCampground(campground, options = {}) {
   const { knowledgeRoot } = resolveKnowledgePaths(options)
   const nowIso = options.nowIso?.() ?? new Date().toISOString()
 
-  const fetchResult = await fetchSource(campground.sourceUrl, { fetchImpl })
+  const contentResult = await fetchCampgroundReadableText(campground, { fetchImpl })
 
-  if (!fetchResult.ok) {
+  if (!contentResult.ok) {
     return {
       campgroundId: campground.id,
       status: 'failed',
-      message: fetchResult.error,
+      message: contentResult.error,
     }
   }
 
-  const readableText = extractReadableText(fetchResult.html)
+  const readableText = contentResult.readableText
   const contentHash = computeContentHash(readableText)
 
   if (readableText.trim().length === 0) {
@@ -133,11 +133,13 @@ export async function ingestCampground(campground, options = {}) {
 
   writeCampgroundDocuments(campground, generatedDocuments, knowledgeRoot)
 
+  const supplementalSourceUrls = getSupplementalSourceUrls(campground.id)
   const updatedManifest = upsertCampgroundRecord(manifest, campground.id, {
     sourceUrl: campground.sourceUrl,
     sourceName: deriveSourceName(campground.sourceUrl),
     lastFetchedAt: nowIso,
     contentHash,
+    ...(supplementalSourceUrls.length > 0 ? { supplementalSourceUrls } : {}),
   })
 
   writeManifest(updatedManifest, manifestPath)
@@ -183,6 +185,11 @@ export async function runIngestionPipeline(campgroundIds, options = {}) {
     }
 
     logger(`[start] ${campgroundId}: fetching ${campground.sourceUrl}`)
+
+    const supplementalUrls = getSupplementalSourceUrls(campgroundId)
+    if (supplementalUrls.length > 0) {
+      logger(`[sources] ${campgroundId}: including ${supplementalUrls.length} supplemental official source(s)`)
+    }
 
     try {
       const result = await ingestCampground(campground, options)
