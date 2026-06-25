@@ -4,7 +4,9 @@ import { campgrounds } from '../data/campgrounds.js'
 import { readManifest } from './manifest.js'
 import {
   getAllIngestionCampgroundIds,
+  getSupplementalSourceUrls,
   INGESTION_CAMPGROUND_IDS,
+  INGESTION_SUPPLEMENTAL_SOURCES,
   resolveCampgroundIdsFromArgs,
 } from './ingestionConfig.js'
 
@@ -34,6 +36,13 @@ describe('ingestionConfig', () => {
     expect(() => resolveCampgroundIdsFromArgs(['--campground'])).toThrow(
       'Missing value for --campground',
     )
+  })
+
+  it('defines supplemental official sources for Yosemite bear policy', () => {
+    expect(getSupplementalSourceUrls('yosemite-upper-pines')).toEqual([
+      'https://www.nps.gov/yose/planyourvisit/bears.htm',
+    ])
+    expect(INGESTION_SUPPLEMENTAL_SOURCES['yosemite-upper-pines']).toHaveLength(1)
   })
 })
 

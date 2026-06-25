@@ -50,6 +50,18 @@ npm run ingest:campgrounds -- --campground donner-memorial
 
 Each campground ID must exist in `src/data/campgrounds.js` and must use an official agency source URL.
 
+### Supplemental official sources
+
+Some campgrounds merge additional official pages during ingestion (for example, Yosemite bear safety policy). Configure these in `src/ingestion/ingestionConfig.js`:
+
+```js
+export const INGESTION_SUPPLEMENTAL_SOURCES = {
+  'yosemite-upper-pines': [
+    'https://www.nps.gov/yose/planyourvisit/bears.htm',
+  ],
+}
+```
+
 ## Change Detection
 
 The pipeline computes a SHA-256 hash of normalized extracted source text. If the hash matches the value stored in `ingestion-manifest.json`, file regeneration is skipped. Running ingestion twice against unchanged source content produces no file differences.
