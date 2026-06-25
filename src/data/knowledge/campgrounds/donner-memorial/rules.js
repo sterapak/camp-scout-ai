@@ -2,10 +2,10 @@
 export default {
   id: 'donner-memorial-rules',
   campgroundId: 'donner-memorial',
-  title: 'Donner Memorial Campground Rules',
+  title: 'Donner Memorial State Park Campground Rules',
   documentType: 'rules',
-  content: `Bear-proof food storage boxes are provided at each campsite — all food and scented items must be stored properly. Maximum of eight people per site. Quiet hours from 10:00 PM to 6:00 AM. Dogs are allowed on leash in the campground but are not permitted on museum grounds. Fires permitted only in provided fire rings. Check-in after 2:00 PM; check-out by 12:00 PM (noon).`,
+  content: `Yes: Dogs are allowed on the Lakeside Interpretive Trail, Zig Zag Trail, fire roads, and along the shore of Donner Lake except for China Cove Beach. Dogs must always remain on a six-foot (maximum) leash. Dogs are not allowed in the visitor center, on the half-mile Nature Trail, or China Cove Beach. Dogs are not allowed on designated ski trails when snow is present. 4/24/26: Spring Weather Brings Hungry Bears to Tahoe Region Food Storage Locker Information Metal bear-resistant food lockers are provided in each campsite. All food, beverages, and toiletries are required by law to be stored in provided food lockers. The inside dimensions of the food lockers are 36" deep, 43" wide, and 28" high. Violators will be cited.`,
   sourceUrl: 'https://www.parks.ca.gov/?page_id=503',
   sourceName: 'California State Parks',
-  lastUpdatedAt: '2025-06-01',
+  lastUpdatedAt: '2026-06-25',
 }

@@ -4,7 +4,8 @@ import {
   KNOWLEDGE_DOCUMENT_TYPES,
   getDocumentTypeLabel,
 } from './knowledgeSchema'
-import { getAllKnowledgeDocuments } from './knowledge/documents'
+import { getAllKnowledgeDocuments, getKnowledgeCampgroundIds } from './knowledge/documents'
+import { campgrounds } from './campgrounds'
 
 describe('knowledgeSchema', () => {
   const validDocument = {
@@ -65,10 +66,16 @@ describe('knowledgeSchema', () => {
 })
 
 describe('knowledge seed documents', () => {
-  it('contains documents for at least 10 campgrounds', () => {
+  it('contains documents for every seed campground', () => {
     const documents = getAllKnowledgeDocuments()
     const campgroundIds = new Set(documents.map((doc) => doc.campgroundId))
-    expect(campgroundIds.size).toBeGreaterThanOrEqual(10)
+
+    expect(campgroundIds.size).toBe(campgrounds.length)
+    expect(getKnowledgeCampgroundIds()).toHaveLength(campgrounds.length)
+
+    campgrounds.forEach((campground) => {
+      expect(campgroundIds.has(campground.id)).toBe(true)
+    })
   })
 
   it('every document passes schema validation', () => {

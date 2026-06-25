@@ -1,11 +1,125 @@
 {
   "version": 1,
   "campgrounds": {
+    "bothe-napa-valley": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=477",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:52:19.161Z",
+      "contentHash": "2e0c96f11594c20a2fb9cde474269aa64db6e24950f32d8dc3b888032ac04e3b"
+    },
+    "castle-crags": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=454",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:52:19.638Z",
+      "contentHash": "9da78c6555aeaf1c2a51ba294b825b9acb994f2292d0ac474036d214edca305f"
+    },
+    "clear-lake-sp": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=473",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:52:19.828Z",
+      "contentHash": "965c7c0cdbce81a75b47b92a71434ec8a3005fdfc879a511ec40911a8553965e"
+    },
+    "donner-memorial": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=503",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:52:20.686Z",
+      "contentHash": "31e6508835d138a4524f6f679e8c5b30f9912fe82552ce35785833331f0e4bbf"
+    },
+    "emerald-bay-eagle-point": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=506",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:52:17.278Z",
+      "contentHash": "3bfd3c56963f38dae621022d340bd9cd9185e0ea39284e1bed3a2a08b0202504"
+    },
+    "humboldt-redwoods-burlington": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=425",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:52:18.412Z",
+      "contentHash": "c7d1f5c951fbc7a357e0dee0992ed346b898fcbbf279a2c63dff721d7b73619c"
+    },
+    "lake-oroville-loafer-creek": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=462",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:52:20.031Z",
+      "contentHash": "cb7b10cef9d351e9dca66ba38e0929e8e222a42f93504e95b5912f33c08d807e"
+    },
+    "lassen-manzanita-lake": {
+      "sourceUrl": "https://www.nps.gov/lavo/planyourvisit/manzanita-lake-campground.htm",
+      "sourceName": "National Park Service",
+      "lastFetchedAt": "2026-06-25T17:52:21.300Z",
+      "contentHash": "a527d47eb8868c72fa3d8195f978e780245bebd42408db481bb9b6e44339cb8a"
+    },
+    "mcarthur-burney-falls": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=455",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:52:18.689Z",
+      "contentHash": "b39779ec2d19bb63b410d52591074d2a33baad43cf0442d4c340b9c8ac2ea271"
+    },
     "mount-tamalpais-pantoll": {
       "sourceUrl": "https://www.parks.ca.gov/?page_id=471",
       "sourceName": "California State Parks",
       "lastFetchedAt": "2026-06-25T17:43:35.023Z",
       "contentHash": "280843565afbb77491c799299aa2083c39569c03cfd2cf43bddfe4c8601eb411"
+    },
+    "plumas-eureka": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=507",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:52:20.294Z",
+      "contentHash": "3e3a7402d43beff942c8faf67dcddebee7e0c8372dc6feb9f0a87ac47f340241"
+    },
+    "portola-redwoods": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=539",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:52:21.089Z",
+      "contentHash": "757994d69c7ebdaee3ff96ccc2f9bd428182f61dbb7e0e65e69d645e8fed8ae4"
+    },
+    "redwood-gold-bluffs-beach": {
+      "sourceUrl": "https://www.nps.gov/redw/planyourvisit/gold-bluffs-beach-campground.htm",
+      "sourceName": "National Park Service",
+      "lastFetchedAt": "2026-06-25T17:52:21.361Z",
+      "contentHash": "49fcaad2ffd875102f66f6d8b2f06e3bf7c1db639f6e5166da71692a338880b3"
+    },
+    "redwood-jedediah-smith": {
+      "sourceUrl": "https://www.nps.gov/redw/planyourvisit/jedediah-smith-campground.htm",
+      "sourceName": "National Park Service",
+      "lastFetchedAt": "2026-06-25T17:52:21.332Z",
+      "contentHash": "f1569adf160f14ab9f67768bcba5a2c159a23c900c93d280228fbc0ecc6b9ebd"
+    },
+    "samuel-p-taylor": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=469",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:52:18.951Z",
+      "contentHash": "9940316dafe06f956b4faecf7961f15d776aa59ef76f387cbddd4a43e0cbace8"
+    },
+    "sonoma-coast-bodega-dunes": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=451",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:52:19.411Z",
+      "contentHash": "d97f71583a3d7f7c463f67e4d3a6e4189983a5c408c0dd0cd6d85bedee88a213"
+    },
+    "standish-hickey": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=423",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:52:21.374Z",
+      "contentHash": "cd8084f6997f5b429ab8e645ee9676a6431c7a1597d295f4b426dea6b02798bc"
+    },
+    "sugar-pine-point": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=504",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:52:20.897Z",
+      "contentHash": "2a1003ed2a27d14deb00ddd9624f1cad905a0be3248dfcd8e273994f85d925bc"
+    },
+    "van-damme-sp": {
+      "sourceUrl": "https://www.parks.ca.gov/?page_id=433",
+      "sourceName": "California State Parks",
+      "lastFetchedAt": "2026-06-25T17:52:17.913Z",
+      "contentHash": "c1adb71c8baf7d72e73ef946e672d0740c796a4bcc3c5df0b80f277de88fc708"
+    },
+    "yosemite-upper-pines": {
+      "sourceUrl": "https://www.nps.gov/yose/planyourvisit/campgrounds.htm",
+      "sourceName": "National Park Service",
+      "lastFetchedAt": "2026-06-25T17:52:21.348Z",
+      "contentHash": "1ca23f118412fb0ee01335647f4e10086bde9a6716d6f4979ac7696e9552c404"
     }
   }
 }

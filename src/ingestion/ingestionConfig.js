@@ -1,10 +1,10 @@
+import { campgrounds } from '../data/campgrounds.js'
+
 /**
  * Campground IDs processed by the official source ingestion pipeline.
- * Add IDs here to ingest or refresh knowledge documents from seed records.
+ * Defaults to every campground in the seed catalog.
  */
-export const INGESTION_CAMPGROUND_IDS = [
-  'mount-tamalpais-pantoll',
-]
+export const INGESTION_CAMPGROUND_IDS = campgrounds.map((campground) => campground.id)
 
 /**
  * Resolves campground IDs from CLI arguments.
@@ -25,4 +25,12 @@ export function resolveCampgroundIdsFromArgs(cliArgs) {
   }
 
   return [campgroundId]
+}
+
+/**
+ * Returns the default campground IDs for a full-catalog ingestion run.
+ * @returns {string[]}
+ */
+export function getAllIngestionCampgroundIds() {
+  return [...INGESTION_CAMPGROUND_IDS]
 }

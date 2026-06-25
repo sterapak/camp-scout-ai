@@ -2,10 +2,10 @@
 export default {
   id: 'mcarthur-burney-falls-rules',
   campgroundId: 'mcarthur-burney-falls',
-  title: 'McArthur-Burney Falls Campground Rules',
+  title: 'McArthur-Burney Falls State Park Campground Rules',
   documentType: 'rules',
-  content: `Swimming is not permitted at the base of Burney Falls. Bear-proof food storage is required — store all food and scented items properly. Quiet hours from 10:00 PM to 6:00 AM. Fires permitted only in provided fire rings. Dogs are allowed on leash in the campground but are not permitted on the Falls Loop Trail. Maximum of eight people per site. Check-in after 2:00 PM; check-out by 12:00 PM (noon).`,
-  sourceUrl: 'https://www.parks.ca.gov/?page_id=502',
+  content: `Yes: Dogs allowed only in parking lot, paved roadway, campgrounds. Dogs not allowed on trails or day-use areas.`,
+  sourceUrl: 'https://www.parks.ca.gov/?page_id=455',
   sourceName: 'California State Parks',
-  lastUpdatedAt: '2025-06-01',
+  lastUpdatedAt: '2026-06-25',
 }

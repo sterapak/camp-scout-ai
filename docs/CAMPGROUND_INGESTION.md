@@ -36,12 +36,16 @@ Generated knowledge documents preserve stable IDs (`{campground-id}-{documentTyp
 
 ## Configure Campgrounds To Ingest
 
-Edit `src/ingestion/ingestionConfig.js`:
+By default, `npm run ingest:campgrounds` processes every campground in `src/data/campgrounds.js`. The default ID list is defined in `src/ingestion/ingestionConfig.js`:
 
 ```js
-export const INGESTION_CAMPGROUND_IDS = [
-  'mount-tamalpais-pantoll',
-]
+export const INGESTION_CAMPGROUND_IDS = campgrounds.map((campground) => campground.id)
+```
+
+To ingest a single campground instead:
+
+```bash
+npm run ingest:campgrounds -- --campground donner-memorial
 ```
 
 Each campground ID must exist in `src/data/campgrounds.js` and must use an official agency source URL.
@@ -63,8 +67,8 @@ Failed campgrounds do not stop the rest of the run.
 
 ## Refresh Workflow
 
-1. Add or update campground IDs in `src/ingestion/ingestionConfig.js`.
-2. Run `npm run ingest:campgrounds`.
+1. Confirm official `sourceUrl` values in `src/data/campgrounds.js` when adding campgrounds.
+2. Run `npm run ingest:campgrounds` to refresh the full catalog.
 3. Review generated files under `src/data/knowledge/campgrounds/`.
 4. Commit updated knowledge files and `ingestion-manifest.json`.
 

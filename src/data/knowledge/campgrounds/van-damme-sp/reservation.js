@@ -2,10 +2,10 @@
 export default {
   id: 'van-damme-sp-reservation',
   campgroundId: 'van-damme-sp',
-  title: 'Van Damme State Park Reservation Information',
+  title: 'Van Damme State Park Campground Reservation Information',
   documentType: 'reservation',
-  content: `Van Damme State Park Campground reservations are available through ReserveCalifornia. Reservations can be made up to six months in advance. Standard and group sites are available. Check-in after 2:00 PM; check-out by 12:00 PM (noon). A valid California State Parks pass or day-use fee may apply for park entry.`,
-  sourceUrl: 'https://www.parks.ca.gov/?page_id=472',
+  content: `Day Use and Entry Fees CAMPINGFamily Camping Van Damme has more than 65 drive-in campsites: 63 standard, 5 tent only, and 1 for groups. Spring through fall, reservations are strongly recommended. Reservations may be made up to six months in advance and are available only by calling 1-800-444-7275 or by clicking the reservations link at the top right of this page.`,
+  sourceUrl: 'https://www.parks.ca.gov/?page_id=433',
   sourceName: 'California State Parks',
-  lastUpdatedAt: '2025-06-01',
+  lastUpdatedAt: '2026-06-25',
 }
