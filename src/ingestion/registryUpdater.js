@@ -6,13 +6,16 @@ const DOCUMENT_TYPE_RANK = Object.fromEntries(
   KNOWLEDGE_DOCUMENT_TYPES.map((documentType, index) => [documentType, index]),
 )
 
+const MULTI_SOURCE_FILE_PATTERN = /^(description|rules|reservation|alert)--source-(\d+)$/
+
 /**
  * Converts a campground folder path into a camelCase import symbol.
  * @param {string} campgroundId
  * @param {string} documentType
+ * @param {string | null} [sourcePriority]
  * @returns {string}
  */
-export function toImportName(campgroundId, documentType) {
+export function toImportName(campgroundId, documentType, sourcePriority = null) {
   const campgroundPart = campgroundId
     .split('-')
     .map((segment, index) => (
@@ -21,14 +24,39 @@ export function toImportName(campgroundId, documentType) {
     .join('')
 
   const typePart = `${documentType.charAt(0).toUpperCase()}${documentType.slice(1)}`
+  const sourcePart = sourcePriority ? `Source${sourcePriority}` : ''
 
-  return `${campgroundPart}${typePart}`
+  return `${campgroundPart}${typePart}${sourcePart}`
+}
+
+/**
+ * Parses a knowledge document filename into document type and optional source priority.
+ * @param {string} fileStem
+ * @returns {{ documentType: string, sourcePriority: string | null } | null}
+ */
+export function parseKnowledgeDocumentFileStem(fileStem) {
+  if (KNOWLEDGE_DOCUMENT_TYPES.includes(fileStem)) {
+    return {
+      documentType: fileStem,
+      sourcePriority: null,
+    }
+  }
+
+  const match = fileStem.match(MULTI_SOURCE_FILE_PATTERN)
+  if (!match) {
+    return null
+  }
+
+  return {
+    documentType: match[1],
+    sourcePriority: match[2],
+  }
 }
 
 /**
  * Discovers knowledge document modules under the campgrounds directory.
  * @param {string} knowledgeRoot
- * @returns {{ campgroundId: string, documentType: string, relativeImportPath: string, importName: string }[]}
+ * @returns {{ campgroundId: string, documentType: string, sourcePriority: string | null, relativeImportPath: string, importName: string }[]}
  */
 export function discoverKnowledgeDocuments(knowledgeRoot) {
   const campgroundsDir = join(knowledgeRoot, 'campgrounds')
@@ -41,20 +69,35 @@ export function discoverKnowledgeDocuments(knowledgeRoot) {
 
   for (const campgroundId of campgroundIds) {
     const campgroundDir = join(campgroundsDir, campgroundId)
-    const files = readdirSync(campgroundDir)
+    const parsedFiles = readdirSync(campgroundDir)
       .filter((fileName) => fileName.endsWith('.js'))
       .map((fileName) => fileName.replace(/\.js$/, ''))
-      .filter((documentType) => KNOWLEDGE_DOCUMENT_TYPES.includes(documentType))
-      .sort((leftType, rightType) => (
-        (DOCUMENT_TYPE_RANK[leftType] ?? 99) - (DOCUMENT_TYPE_RANK[rightType] ?? 99)
-      ))
+      .map((fileStem) => parseKnowledgeDocumentFileStem(fileStem))
+      .filter(Boolean)
+      .sort((left, right) => {
+        const leftRank = DOCUMENT_TYPE_RANK[left.documentType] ?? 99
+        const rightRank = DOCUMENT_TYPE_RANK[right.documentType] ?? 99
 
-    for (const documentType of files) {
+        if (leftRank !== rightRank) {
+          return leftRank - rightRank
+        }
+
+        const leftPriority = Number(left.sourcePriority ?? 0)
+        const rightPriority = Number(right.sourcePriority ?? 0)
+        return leftPriority - rightPriority
+      })
+
+    for (const parsed of parsedFiles) {
+      const fileStem = parsed.sourcePriority
+        ? `${parsed.documentType}--source-${parsed.sourcePriority}`
+        : parsed.documentType
+
       discovered.push({
         campgroundId,
-        documentType,
-        relativeImportPath: `./campgrounds/${campgroundId}/${documentType}.js`,
-        importName: toImportName(campgroundId, documentType),
+        documentType: parsed.documentType,
+        sourcePriority: parsed.sourcePriority,
+        relativeImportPath: `./campgrounds/${campgroundId}/${fileStem}.js`,
+        importName: toImportName(campgroundId, parsed.documentType, parsed.sourcePriority),
       })
     }
   }

@@ -7,11 +7,17 @@ const MANIFEST_RELATIVE_PATH = 'src/data/knowledge/ingestion-manifest.json'
 export const DEFAULT_MANIFEST_PATH = join(process.cwd(), MANIFEST_RELATIVE_PATH)
 
 /**
+ * @typedef {import('../data/campgroundSchema.js').CampgroundSource} CampgroundSource
+ */
+
+/**
  * @typedef {Object} CampgroundIngestionRecord
  * @property {string} sourceUrl
  * @property {string} sourceName
  * @property {string} lastFetchedAt
  * @property {string} contentHash
+ * @property {CampgroundSource[]} [sources]
+ * @property {string[]} [supplementalSourceUrls]
  */
 
 /**

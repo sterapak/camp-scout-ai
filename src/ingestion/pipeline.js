@@ -2,12 +2,16 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { campgrounds } from '../data/campgrounds.js'
+import { hasConfiguredSources, resolveCampgroundSources } from '../data/campgroundSources.js'
 import { isValidKnowledgeDocument } from '../data/knowledgeSchema.js'
 import { categorizeContent } from './categorizeContent.js'
 import { computeContentHash } from './contentHash.js'
 import { fetchCampgroundReadableText } from './fetchCampgroundContent.js'
 import { formatKnowledgeDocumentFile } from './formatDocumentFile.js'
-import { generateKnowledgeDocuments } from './generateDocuments.js'
+import {
+  buildKnowledgeDocumentFileName,
+  generateKnowledgeDocuments,
+} from './generateDocuments.js'
 import { getSupplementalSourceUrls } from './ingestionConfig.js'
 import {
   DEFAULT_MANIFEST_PATH,
@@ -17,7 +21,7 @@ import {
   upsertCampgroundRecord,
   writeManifest,
 } from './manifest.js'
-import { deriveSourceName } from './sourceName.js'
+import { resolveSourceName } from './sourceName.js'
 import { updateDocumentsRegistry } from './registryUpdater.js'
 
 const KNOWLEDGE_RELATIVE_ROOT = 'src/data/knowledge'
@@ -70,13 +74,48 @@ function writeCampgroundDocuments(campground, documents, knowledgeRoot) {
       throw new Error(`Generated invalid knowledge document for ${campground.id}/${document.documentType}.`)
     }
 
-    const filePath = join(campgroundDir, `${document.documentType}.js`)
+    const fileName = buildKnowledgeDocumentFileName(
+      document.documentType,
+      document.id,
+      campground.id,
+    )
+    const filePath = join(campgroundDir, fileName)
     writeFileSync(filePath, formatKnowledgeDocumentFile(document), 'utf8')
   }
 }
 
 /**
- * Ingests one campground from its configured official source URL.
+ * Builds manifest metadata for an ingested campground.
+ * @param {import('../data/campgroundSchema.js').Campground} campground
+ * @param {string} nowIso
+ * @param {string} contentHash
+ * @returns {import('./manifest.js').CampgroundIngestionRecord}
+ */
+function buildManifestRecord(campground, nowIso, contentHash) {
+  const primarySource = resolveCampgroundSources(campground)[0]
+  const supplementalSourceUrls = getSupplementalSourceUrls(campground.id)
+
+  return {
+    sourceUrl: campground.sourceUrl,
+    sourceName: resolveSourceName(primarySource),
+    lastFetchedAt: nowIso,
+    contentHash,
+    ...(hasConfiguredSources(campground)
+      ? {
+          sources: resolveCampgroundSources(campground).map((source) => ({
+            name: source.name,
+            url: source.url,
+            sourceType: source.sourceType,
+            priority: source.priority,
+          })),
+        }
+      : {}),
+    ...(supplementalSourceUrls.length > 0 ? { supplementalSourceUrls } : {}),
+  }
+}
+
+/**
+ * Ingests one campground from its configured official source URLs.
  * @param {import('../data/campgroundSchema.js').Campground} campground
  * @param {Object} [options]
  * @param {typeof fetch} [options.fetchImpl]
@@ -101,7 +140,7 @@ export async function ingestCampground(campground, options = {}) {
     }
   }
 
-  const readableText = contentResult.readableText
+  const readableText = contentResult.readableText ?? ''
   const contentHash = computeContentHash(readableText)
 
   if (readableText.trim().length === 0) {
@@ -123,24 +162,26 @@ export async function ingestCampground(campground, options = {}) {
     }
   }
 
-  const categorized = categorizeContent(readableText)
   const lastUpdatedAt = toKnowledgeUpdatedDate(nowIso)
-  const generatedDocuments = generateKnowledgeDocuments({
-    campground,
-    categorized,
-    lastUpdatedAt,
-  })
+  const generatedDocuments = hasConfiguredSources(campground) && contentResult.fetchedSources
+    ? generateKnowledgeDocuments({
+        campground,
+        fetchedSources: contentResult.fetchedSources,
+        lastUpdatedAt,
+      })
+    : generateKnowledgeDocuments({
+        campground,
+        categorized: categorizeContent(readableText),
+        lastUpdatedAt,
+      })
 
   writeCampgroundDocuments(campground, generatedDocuments, knowledgeRoot)
 
-  const supplementalSourceUrls = getSupplementalSourceUrls(campground.id)
-  const updatedManifest = upsertCampgroundRecord(manifest, campground.id, {
-    sourceUrl: campground.sourceUrl,
-    sourceName: deriveSourceName(campground.sourceUrl),
-    lastFetchedAt: nowIso,
-    contentHash,
-    ...(supplementalSourceUrls.length > 0 ? { supplementalSourceUrls } : {}),
-  })
+  const updatedManifest = upsertCampgroundRecord(
+    manifest,
+    campground.id,
+    buildManifestRecord(campground, nowIso, contentHash),
+  )
 
   writeManifest(updatedManifest, manifestPath)
 
@@ -184,11 +225,11 @@ export async function runIngestionPipeline(campgroundIds, options = {}) {
       continue
     }
 
-    logger(`[start] ${campgroundId}: fetching ${campground.sourceUrl}`)
+    const configuredSources = resolveCampgroundSources(campground)
+    logger(`[start] ${campgroundId}: fetching ${configuredSources.length} official source(s)`)
 
-    const supplementalUrls = getSupplementalSourceUrls(campgroundId)
-    if (supplementalUrls.length > 0) {
-      logger(`[sources] ${campgroundId}: including ${supplementalUrls.length} supplemental official source(s)`)
+    if (configuredSources.length > 1 && !hasConfiguredSources(campground)) {
+      logger(`[sources] ${campgroundId}: including ${configuredSources.length - 1} supplemental official source(s)`)
     }
 
     try {

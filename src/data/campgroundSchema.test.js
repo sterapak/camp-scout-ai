@@ -15,6 +15,7 @@ describe('campgroundSchema', () => {
       'notes',
       'lastVerifiedAt',
       'tags',
+      'sources',
     ])
   })
 
@@ -32,9 +33,9 @@ describe('campgroundSchema', () => {
 })
 
 describe('campgrounds seed data', () => {
-  it('contains 10–20 real NorCal campgrounds', () => {
-    expect(campgrounds.length).toBeGreaterThanOrEqual(10)
-    expect(campgrounds.length).toBeLessThanOrEqual(20)
+  it('contains 20–25 real NorCal campgrounds', () => {
+    expect(campgrounds.length).toBeGreaterThanOrEqual(20)
+    expect(campgrounds.length).toBeLessThanOrEqual(25)
   })
 
   it('every record passes schema validation', () => {
