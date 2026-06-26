@@ -7,5 +7,5 @@ export default {
   content: `Quiet hours are enforced from 10 PM to 6 AM.`,
   sourceUrl: 'https://www.eid.org/recreation/silver-lake',
   sourceName: 'El Dorado Irrigation District',
-  lastUpdatedAt: '2025-06-25',
+  lastUpdatedAt: '2025-06-26',
 }

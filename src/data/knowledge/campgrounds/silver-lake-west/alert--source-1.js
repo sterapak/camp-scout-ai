@@ -4,8 +4,8 @@ export default {
   campgroundId: 'silver-lake-west',
   title: 'Silver Lake West Campground Alerts & Notices',
   documentType: 'alert',
-  content: `Seasonal alert: High winds may affect boat launch operations during winter storms.`,
+  content: `Boating: Seasonal alert: High winds may affect boat launch operations during winter storms.`,
   sourceUrl: 'https://www.eid.org/recreation/silver-lake',
   sourceName: 'El Dorado Irrigation District',
-  lastUpdatedAt: '2025-06-25',
+  lastUpdatedAt: '2025-06-26',
 }

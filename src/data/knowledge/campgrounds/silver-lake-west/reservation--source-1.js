@@ -7,5 +7,5 @@ export default {
   content: `Camping fees include one vehicle. Additional vehicle fees may apply where parking is limited.`,
   sourceUrl: 'https://www.eid.org/recreation/silver-lake',
   sourceName: 'El Dorado Irrigation District',
-  lastUpdatedAt: '2025-06-25',
+  lastUpdatedAt: '2025-06-26',
 }
