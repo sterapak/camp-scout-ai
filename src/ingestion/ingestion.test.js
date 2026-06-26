@@ -3,6 +3,7 @@
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { parse } from 'node-html-parser'
 
 import { isValidKnowledgeDocument } from '../data/knowledgeSchema.js'
 import { computeContentHash, normalizeExtractedText } from './contentHash.js'
@@ -13,7 +14,11 @@ import {
   isNoiseParagraph,
   scoreParagraphForType,
 } from './categorizeContent.js'
-import { extractParagraphsFromHtml, extractReadableText } from './extractContent.js'
+import {
+  expandCollapsibleContent,
+  extractParagraphsFromHtml,
+  extractReadableText,
+} from './extractContent.js'
 import { fetchSource } from './fetchSource.js'
 import {
   buildDocumentId,
@@ -88,6 +93,45 @@ describe('extractContent', () => {
 
     expect(readableText).toContain('Pantoll Campground is located in Mount Tamalpais State Park')
     expect(readableText).toContain('first-come first-served')
+  })
+
+  it('extracts accordion panel bodies marked aria-hidden', () => {
+    const accordionHtml = `
+      <html><body><main>
+        <div class="panel-group accordion">
+          <div class="panel">
+            <div class="panel-heading"><h4 class="panel-title"><a>Camping at Silver Lake West</a></h4></div>
+            <div class="panel-collapse collapse" aria-hidden="true">
+              <div class="panel-body">
+                <p>Silver Lake West Campground operates on a first-come, first-served basis. The campground has forty-two (42) campsites. No reservations are accepted. There is no potable water at the campground.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main></body></html>
+    `
+
+    const readableText = extractReadableText(accordionHtml)
+
+    expect(readableText).toMatch(/forty-two \(42\) campsites|42 campsites/i)
+    expect(readableText).toContain('first-come, first-served')
+    expect(readableText).toContain('No reservations are accepted')
+    expect(readableText).toContain('no potable water')
+  })
+
+  it('reveals hidden accordion panels before aria-hidden nodes are removed', () => {
+    const root = parse(`
+      <div class="panel">
+        <div class="panel-collapse collapse" aria-hidden="true">
+          <div class="panel-body"><p>Hidden accordion panel content for testing extraction.</p></div>
+        </div>
+      </div>
+    `)
+
+    expandCollapsibleContent(root)
+
+    expect(root.querySelector('.panel-collapse')?.getAttribute('aria-hidden')).toBeUndefined()
+    expect(root.querySelector('.panel-body')?.text).toContain('Hidden accordion panel content')
   })
 })
 

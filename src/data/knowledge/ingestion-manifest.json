@@ -120,8 +120,8 @@
     "silver-lake-west": {
       "sourceUrl": "https://www.eid.org/recreation/silver-lake",
       "sourceName": "El Dorado Irrigation District",
-      "lastFetchedAt": "2025-06-25T12:00:00.000Z",
-      "contentHash": "d14beef6fc4b696c78988c3c317d7712ee86d6be0f92488d312cadfdf8ceb78f",
+      "lastFetchedAt": "2025-06-26T12:00:00.000Z",
+      "contentHash": "024c41ebc91bce90fed60cfefafc6dbe6f463171fde89e30e8d14371b9671d04",
       "sources": [
         {
           "name": "El Dorado Irrigation District",

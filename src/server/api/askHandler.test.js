@@ -13,6 +13,7 @@ import {
   INSUFFICIENT_CONTEXT_STATUS,
   SUCCESS_STATUS,
 } from '../rag/groundedAnswerGenerator.js'
+import { retrieveDocuments } from '../../data/knowledge/knowledgeRetrieval.js'
 
 describe('validateAskRequestBody', () => {
   it('accepts a valid question', () => {
@@ -124,6 +125,33 @@ describe('handleAskRequest', () => {
     expect(response.statusCode).toBe(502)
     expect(response.body).toEqual({ error: 'Answer generation failed. Please try again.' })
     expect(JSON.stringify(response.body)).not.toMatch(/OPENAI_API_KEY|Upstream failure|sk-proj-|sk-live-/)
+  })
+
+  it('retrieves Silver Lake West campsite count for camping site questions', () => {
+    const results = retrieveDocuments({
+      query: 'how many camping sites at silver lake?',
+      campgroundId: 'silver-lake-west',
+    })
+
+    expect(results.length).toBeGreaterThan(0)
+
+    const combinedContent = results.map((result) => result.document.content).join(' ')
+    expect(combinedContent).toMatch(/forty-two \(42\) campsites|42 campsites/i)
+  })
+
+  it('answers Silver Lake West campsite count questions with grounded context', async () => {
+    const response = await handleAskRequest(
+      {
+        question: 'how many camping sites at silver lake?',
+        campgroundId: 'silver-lake-west',
+      },
+      { answerProvider: fakeAnswerProvider },
+    )
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body.status).toBe(SUCCESS_STATUS)
+    expect(response.body.citations.length).toBeGreaterThan(0)
+    expect(response.body.citations.some((citation) => citation.sourceName === 'El Dorado Irrigation District')).toBe(true)
   })
 })
 

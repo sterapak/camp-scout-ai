@@ -161,6 +161,38 @@ describe('multi-source ingestion', () => {
   })
 })
 
+describe('Silver Lake West EID accordion extraction', () => {
+  it('includes forty-two (42) campsites and FCFS details from accordion panels', () => {
+    const readableText = extractReadableText(silverLakeEidHtml)
+    const documents = generateKnowledgeDocuments({
+      campground: silverLake,
+      fetchedSources: [
+        {
+          source: silverLake.sources[0],
+          readableText,
+          url: silverLake.sources[0].url,
+        },
+        {
+          source: silverLake.sources[1],
+          readableText: extractReadableText(silverLakeUsfsHtml),
+          url: silverLake.sources[1].url,
+        },
+      ],
+      lastUpdatedAt: '2025-06-25',
+    })
+
+    const combinedContent = documents
+      .filter((document) => document.sourceName === 'El Dorado Irrigation District')
+      .map((document) => document.content)
+      .join(' ')
+
+    expect(combinedContent).toMatch(/forty-two \(42\) campsites|42 campsites/i)
+    expect(combinedContent).toContain('first-come, first-served')
+    expect(combinedContent).toContain('No reservations are accepted')
+    expect(combinedContent).toMatch(/no potable water|no water service/i)
+  })
+})
+
 describe('multi-source citation preservation', () => {
   it('maps retrieval results to the correct official authority', () => {
     const results = retrieveByCampground('silver-lake-west')
@@ -228,6 +260,7 @@ describe('multi-source ingestCampground integration', () => {
       )
       expect(eidDescription).toContain('El Dorado Irrigation District')
       expect(eidDescription).toContain('https://www.eid.org/recreation/silver-lake')
+      expect(eidDescription).toMatch(/forty-two \(42\) campsites|42 campsites/i)
     } finally {
       rmSync(tempDir, { recursive: true, force: true })
     }

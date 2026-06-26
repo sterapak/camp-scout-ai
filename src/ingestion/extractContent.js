@@ -51,6 +51,22 @@ const CONTENT_ROOT_SELECTORS = [
 
 const BLOCK_TAGS = new Set(['P', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'TD', 'TH', 'DIV'])
 
+const COLLAPSIBLE_PANEL_SELECTORS = [
+  '.panel-collapse',
+  '.accordion-body',
+  '.accordion-inner',
+  '.panel-body',
+  '[role="tabpanel"]',
+  '[role="region"]',
+  'details',
+]
+
+const COLLAPSIBLE_GROUP_SELECTORS = [
+  '.panel',
+  '.accordion-group',
+  '.accordion-item',
+]
+
 /**
  * Decodes common HTML entities in text nodes.
  * @param {string} text
@@ -98,6 +114,8 @@ export function extractParagraphsFromHtml(html) {
       style: false,
     },
   })
+
+  expandCollapsibleContent(root)
 
   for (const selector of REMOVED_SELECTORS) {
     root.querySelectorAll(selector).forEach((node) => node.remove())
@@ -207,4 +225,81 @@ function dedupeParagraphs(paragraphs) {
   }
 
   return unique
+}
+
+/**
+ * Unwraps accordion/collapsible panels so hidden body content survives extraction.
+ * Many CMS pages (including CivicPlus) mark collapsed panels with aria-hidden="true",
+ * which would otherwise be removed entirely by REMOVED_SELECTORS.
+ * @param {import('node-html-parser').HTMLElement} root
+ */
+export function expandCollapsibleContent(root) {
+  for (const selector of COLLAPSIBLE_PANEL_SELECTORS) {
+    root.querySelectorAll(selector).forEach((panel) => {
+      revealCollapsibleNode(panel)
+    })
+  }
+
+  for (const selector of COLLAPSIBLE_GROUP_SELECTORS) {
+    root.querySelectorAll(selector).forEach((group) => {
+      mergeAccordionHeadingIntoPanel(group)
+    })
+  }
+}
+
+/**
+ * @param {import('node-html-parser').HTMLElement} node
+ */
+function revealCollapsibleNode(node) {
+  let current = node
+
+  while (current) {
+    current.removeAttribute('hidden')
+    current.removeAttribute('aria-hidden')
+
+    if (
+      current.classList?.contains('collapse')
+      || current.classList?.contains('panel-collapse')
+      || current.classList?.contains('accordion-body')
+      || current.tagName?.toUpperCase() === 'DETAILS'
+    ) {
+      break
+    }
+
+    current = current.parentNode
+  }
+}
+
+/**
+ * Prefixes accordion panel text with its section heading for clearer paragraphs.
+ * @param {import('node-html-parser').HTMLElement} group
+ */
+function mergeAccordionHeadingIntoPanel(group) {
+  const headingNode = group.querySelector('.panel-heading, .accordion-heading, summary')
+  const bodyNode = group.querySelector('.panel-body, .accordion-body, .accordion-inner, .panel-collapse')
+
+  if (!headingNode || !bodyNode) {
+    return
+  }
+
+  const headingText = normalizeParagraphText(headingNode.text)
+  if (headingText.length < 3) {
+    return
+  }
+
+  const firstParagraph = bodyNode.querySelector('p')
+  const bodyText = normalizeParagraphText(firstParagraph?.text ?? bodyNode.text)
+
+  if (bodyText.length === 0 || bodyText.toLowerCase().startsWith(headingText.toLowerCase())) {
+    return
+  }
+
+  const mergedText = `${headingText}: ${bodyText}`
+
+  if (firstParagraph) {
+    firstParagraph.set_content(mergedText)
+    return
+  }
+
+  bodyNode.insertAdjacentHTML('afterbegin', `<p>${mergedText}</p>`)
 }
