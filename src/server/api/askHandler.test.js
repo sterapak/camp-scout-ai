@@ -152,6 +152,41 @@ describe('handleAskRequest', () => {
     expect(response.body.citations.length).toBeGreaterThan(0)
     expect(response.body.citations.some((citation) => citation.sourceName === 'El Dorado Irrigation District')).toBe(true)
   })
+
+  it('returns ratings-unavailable for unsupported ratings questions', async () => {
+    const response = await handleAskRequest(
+      { question: 'What is the star rating for Silver Lake West?' },
+      { answerProvider: fakeAnswerProvider },
+    )
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body.status).toBe(SUCCESS_STATUS)
+    expect(response.body.answer).toContain('Review ratings are not available yet')
+    expect(response.body.citations).toEqual([])
+    expect(response.body.model).toBe('capability-guardrail')
+  })
+
+  it('applies comparison guardrails for campground comparison questions', async () => {
+    const generateAnswer = jest.fn(async () => ({
+      text: 'I can compare Silver Lake West and Silver Lake East by official facts like operator, reservations, water, and campsite type, but I do not have review ratings yet.',
+      model: 'fake-model',
+      inputTokens: 10,
+      outputTokens: 5,
+    }))
+
+    const response = await handleAskRequest(
+      { question: 'Compare Silver Lake West and Silver Lake East' },
+      { answerProvider: { name: 'fake', generateAnswer } },
+    )
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body.status).toBe(SUCCESS_STATUS)
+    expect(generateAnswer).toHaveBeenCalledTimes(1)
+
+    const request = generateAnswer.mock.calls[0][0]
+    expect(request.instructions).toContain('comparison question')
+    expect(request.instructions).toContain('review ratings are not available')
+  })
 })
 
 describe('ask handler safety', () => {
