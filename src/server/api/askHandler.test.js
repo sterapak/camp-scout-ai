@@ -130,12 +130,12 @@ describe('handleAskRequest', () => {
   it('retrieves Silver Lake West campsite count for camping site questions', () => {
     const results = retrieveDocuments({
       query: 'how many camping sites at silver lake?',
-      campgroundId: 'silver-lake-west',
     })
 
     expect(results.length).toBeGreaterThan(0)
+    expect(results[0].document.campgroundId).toBe('silver-lake-west')
 
-    const combinedContent = results.map((result) => result.document.content).join(' ')
+    const combinedContent = results.slice(0, 3).map((result) => result.document.content).join(' ')
     expect(combinedContent).toMatch(/forty-two \(42\) campsites|42 campsites/i)
   })
 
@@ -143,7 +143,6 @@ describe('handleAskRequest', () => {
     const response = await handleAskRequest(
       {
         question: 'how many camping sites at silver lake?',
-        campgroundId: 'silver-lake-west',
       },
       { answerProvider: fakeAnswerProvider },
     )
