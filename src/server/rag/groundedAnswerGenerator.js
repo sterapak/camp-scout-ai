@@ -8,6 +8,10 @@ import { retrieveDocuments } from '../../data/knowledge/knowledgeRetrieval.js'
 import { buildRetrievalContext } from '../../data/knowledge/retrievalContext.js'
 import { createAnswerProvider } from '../openai/createAnswerProvider.js'
 import { DEFAULT_MAX_OUTPUT_TOKENS } from '../openai/answerProvider.js'
+import {
+  buildCapabilityGuardrailRules,
+  classifyQuery,
+} from './queryClassifier.js'
 
 export const DEFAULT_TOP_DOCUMENT_COUNT = 3
 export const GROUNDED_ANSWER_MAX_OUTPUT_TOKENS = DEFAULT_MAX_OUTPUT_TOKENS
@@ -56,10 +60,12 @@ const DEFAULT_INSUFFICIENT_MESSAGE =
 /**
  * Builds system instructions requiring context-only answers with citations.
  * @param {number} sourceCount
+ * @param {import('./queryClassifier.js').QueryCategory} [queryCategory]
+ * @param {string[]} [campgroundNames]
  * @returns {string}
  */
-export function buildGroundedAnswerInstructions(sourceCount) {
-  return [
+export function buildGroundedAnswerInstructions(sourceCount, queryCategory, campgroundNames = []) {
+  const baseRules = [
     'You are Camp Scout AI, a helpful assistant for Northern California campground visitors.',
     'Answer using ONLY the retrieved source excerpts provided in the user input.',
     '',
@@ -70,6 +76,19 @@ export function buildGroundedAnswerInstructions(sourceCount) {
     '4. If the context does not contain enough information, say so clearly.',
     '5. Never invent campground names, policies, fees, availability, or reservation details.',
     '6. Use plain, friendly language appropriate for campers planning a trip.',
+  ]
+
+  const guardrailRules = buildCapabilityGuardrailRules(queryCategory ?? 'factual', campgroundNames)
+
+  if (guardrailRules.length === 0) {
+    return baseRules.join('\n')
+  }
+
+  return [
+    ...baseRules,
+    '',
+    'Capability guardrails:',
+    ...guardrailRules.map((rule, index) => `${index + 1}. ${rule}`),
   ].join('\n')
 }
 
@@ -111,6 +130,20 @@ export function buildInsufficientContextResponse(message = DEFAULT_INSUFFICIENT_
 }
 
 /**
+ * Returns a grounded success response for capability guardrail short-circuits.
+ * @param {string} answer
+ * @returns {GroundedAnswerSuccess}
+ */
+export function buildGuardrailAnswerResponse(answer) {
+  return {
+    status: SUCCESS_STATUS,
+    answer,
+    citations: [],
+    model: 'capability-guardrail',
+  }
+}
+
+/**
  * Generates a grounded answer from retrieved campground knowledge.
  * @param {{
  *   question: string,
@@ -138,6 +171,12 @@ export async function generateGroundedAnswer({
     return buildInsufficientContextResponse('A question is required to generate an answer.')
   }
 
+  const queryClassification = classifyQuery(trimmedQuestion)
+
+  if (queryClassification.shouldShortCircuit && queryClassification.shortCircuitMessage) {
+    return buildGuardrailAnswerResponse(queryClassification.shortCircuitMessage)
+  }
+
   const results = retrieveDocuments({
     query: trimmedQuestion,
     campgroundId,
@@ -159,7 +198,11 @@ export async function generateGroundedAnswer({
   const providerInstance = answerProvider ?? createAnswerProvider({ provider })
 
   const generationResult = await providerInstance.generateAnswer({
-    instructions: buildGroundedAnswerInstructions(context.sourceCount),
+    instructions: buildGroundedAnswerInstructions(
+      context.sourceCount,
+      queryClassification.category,
+      queryClassification.campgroundNames,
+    ),
     input: context.promptContext,
     maxOutputTokens,
   })
