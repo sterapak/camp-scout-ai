@@ -12,9 +12,29 @@ import { DEFAULT_OPENAI_MODEL } from './answerProvider.js'
  */
 function buildFakeAnswer(request) {
   const input = typeof request?.input === 'string' ? request.input.trim() : ''
+  const instructions = typeof request?.instructions === 'string' ? request.instructions : ''
 
   if (input.length === 0) {
     return 'Fake provider: no input was provided.'
+  }
+
+  if (instructions.includes('campground summary')) {
+    return [
+      '## Overview',
+      'This campground offers scenic camping with access to official park facilities [Source 1].',
+      '',
+      '## Amenities',
+      'Restrooms, picnic tables, and fire rings are available according to official sources [Source 1].',
+      '',
+      '## Restrictions',
+      'Follow posted quiet hours and food storage rules from the managing agency [Source 2].',
+      '',
+      '## Reservations',
+      'Reservations may be required during peak season; check the official reservation portal [Source 3].',
+      '',
+      '## Highlights',
+      'Popular for its location and access to nearby trails and water recreation [Source 1].',
+    ].join('\n')
   }
 
   return `Fake provider answer for: ${input}`
