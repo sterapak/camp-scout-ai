@@ -15,6 +15,13 @@ describe('CampgroundAiSummary', () => {
       <CampgroundAiSummary
         status="success"
         confidence="high"
+        generatedAt="2026-06-27T15:30:00.000Z"
+        knowledgeSnapshot={{
+          id: 'abc123',
+          contentHash: 'abc123',
+          lastFetchedAt: '2026-06-25T17:52:19.161Z',
+          sourceName: 'National Park Service',
+        }}
         sections={{
           overview: 'Scenic valley camping near Yosemite landmarks.',
           amenities: 'Restrooms and fire rings available.',
@@ -38,10 +45,12 @@ describe('CampgroundAiSummary', () => {
             documentType: 'rules',
           },
         ]}
-      />
+      />,
     )
 
     expect(screen.getByText('AI summary')).toBeInTheDocument()
+    expect(screen.getByText(/Generated on/i)).toBeInTheDocument()
+    expect(screen.getByText(/Knowledge snapshot from National Park Service/i)).toBeInTheDocument()
     expect(screen.getByText('High confidence')).toBeInTheDocument()
     expect(screen.getByText('Overview')).toBeInTheDocument()
     expect(screen.getByText('Scenic valley camping near Yosemite landmarks.')).toBeInTheDocument()

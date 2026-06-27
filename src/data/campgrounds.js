@@ -239,6 +239,15 @@ export const campgrounds = [
     notes: 'Year-round Yosemite Valley campground with views of surrounding granite cliffs.',
     lastVerifiedAt: '2025-06-01',
     tags: ['national-park', 'mountain', 'iconic'],
+    images: [
+      {
+        url: 'https://www.nps.gov/yose/planyourvisit/images/pines-campgrounds-map.jpg',
+        altText: 'Map of Upper, Lower, and North Pines campgrounds in Yosemite Valley',
+        sourceName: 'National Park Service',
+        sourceUrl: 'https://www.nps.gov/yose/planyourvisit/pinescampgrounds.htm',
+        priority: 1,
+      },
+    ],
   },
   {
     id: 'redwood-gold-bluffs-beach',
@@ -292,6 +301,22 @@ export const campgrounds = [
     notes: 'EID-operated campground on Silver Lake at 7,200 feet along Highway 88; surrounded by Eldorado National Forest.',
     lastVerifiedAt: '2025-06-01',
     tags: ['operator-managed', 'lakeside', 'mountain', 'first-come-first-served'],
+    images: [
+      {
+        url: 'https://www.fs.usda.gov/Internet/FSE_MEDIA/fseprd1045676.jpg',
+        altText: 'Silver Lake West Campground on the shore of Silver Lake in Eldorado National Forest',
+        sourceName: 'U.S. Forest Service',
+        sourceUrl: 'https://www.fs.usda.gov/r05/eldorado/recreation/silver-lake-campground-east',
+        priority: 1,
+      },
+      {
+        url: 'https://www.eid.org/sites/default/files/styles/hero/public/recreation/silver-lake.jpg',
+        altText: 'Silver Lake recreation area managed by El Dorado Irrigation District',
+        sourceName: 'El Dorado Irrigation District',
+        sourceUrl: 'https://www.eid.org/recreation/silver-lake',
+        priority: 2,
+      },
+    ],
   },
   {
     id: 'ice-house-reservoir',
@@ -325,5 +350,14 @@ export const campgrounds = [
     notes: 'Crystal Basin reservoir campground managed by the U.S. Forest Service with PG&E hydro recreation context and Recreation.gov reservations.',
     lastVerifiedAt: '2025-06-01',
     tags: ['national-forest', 'lakeside', 'boating', 'reservable'],
+    images: [
+      {
+        url: 'https://www.fs.usda.gov/Internet/FSE_MEDIA/fseprd1054892.jpg',
+        altText: 'Ice House Campground along Ice House Reservoir in Eldorado National Forest',
+        sourceName: 'U.S. Forest Service',
+        sourceUrl: 'https://www.fs.usda.gov/r05/eldorado/recreation/ice-house-campground',
+        priority: 1,
+      },
+    ],
   },
 ]

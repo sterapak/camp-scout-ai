@@ -11,6 +11,29 @@ export function getCampgroundById(id) {
   return getAllCampgrounds().find((c) => c.id === id) ?? null
 }
 
+/**
+ * Returns campground images sorted by priority (1 = primary).
+ * @param {import('./campgroundSchema.js').Campground | null | undefined} campground
+ * @returns {import('./campgroundSchema.js').CampgroundImage[]}
+ */
+export function getCampgroundImages(campground) {
+  if (!campground?.images?.length) {
+    return []
+  }
+
+  return [...campground.images].sort((left, right) => left.priority - right.priority)
+}
+
+/**
+ * Returns the primary (lowest priority number) campground image, if any.
+ * @param {import('./campgroundSchema.js').Campground | null | undefined} campground
+ * @returns {import('./campgroundSchema.js').CampgroundImage | null}
+ */
+export function getPrimaryImage(campground) {
+  const images = getCampgroundImages(campground)
+  return images[0] ?? null
+}
+
 /** @returns {string[]} */
 export function getAllRegions() {
   return [...new Set(getAllCampgrounds().map((c) => c.region))].sort()

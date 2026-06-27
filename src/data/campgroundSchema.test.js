@@ -1,4 +1,4 @@
-import { isValidCampground, CAMPGROUND_FIELDS } from './campgroundSchema'
+import { isValidCampground, isValidCampgroundImage, CAMPGROUND_FIELDS } from './campgroundSchema'
 import { campgrounds } from './campgrounds'
 
 describe('campgroundSchema', () => {
@@ -16,6 +16,7 @@ describe('campgroundSchema', () => {
       'lastVerifiedAt',
       'tags',
       'sources',
+      'images',
     ])
   })
 
@@ -29,6 +30,24 @@ describe('campgroundSchema', () => {
 
   it('rejects records with invalid URLs', () => {
     expect(isValidCampground({ ...campgrounds[0], sourceUrl: 'not-a-url' })).toBe(false)
+  })
+
+  it('validates official campground images', () => {
+    expect(
+      isValidCampgroundImage({
+        url: 'https://www.nps.gov/yose/planyourvisit/images/pines-campgrounds-map.jpg',
+        altText: 'Upper Pines campground map',
+        sourceName: 'National Park Service',
+        sourceUrl: 'https://www.nps.gov/yose/planyourvisit/pinescampgrounds.htm',
+        priority: 1,
+      }),
+    ).toBe(true)
+  })
+
+  it('rejects campground images with duplicate priorities', () => {
+    const yosemite = campgrounds.find((campground) => campground.id === 'yosemite-upper-pines')
+    expect(yosemite?.images).toBeDefined()
+    expect(isValidCampground(yosemite)).toBe(true)
   })
 })
 

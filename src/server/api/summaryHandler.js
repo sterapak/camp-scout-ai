@@ -3,13 +3,14 @@
  * Server-only; never import from React client code.
  */
 
-import { generateCampgroundSummary } from '../rag/campgroundSummaryGenerator.js'
+import { getCampgroundSummary } from '../rag/campgroundSummaryService.js'
 import { MissingOpenAiApiKeyError, OpenAiResponseError } from '../openai/errors.js'
 import { logOpenAiDiagnostic } from '../openai/logOpenAiDiagnostic.js'
 
 /**
  * @typedef {Object} SummaryRequestBody
  * @property {string} campgroundId
+ * @property {boolean} [forceRegenerate]
  */
 
 const INVALID_BODY_ERROR = 'Request body must be a JSON object with a campgroundId field.'
@@ -39,10 +40,14 @@ export function validateSummaryRequestBody(body) {
     }
   }
 
-  return {
-    ok: true,
-    value: { campgroundId: campgroundId.trim() },
+  /** @type {SummaryRequestBody} */
+  const value = { campgroundId: campgroundId.trim() }
+
+  if (typeof body.forceRegenerate === 'boolean') {
+    value.forceRegenerate = body.forceRegenerate
   }
+
+  return { ok: true, value }
 }
 
 /**
@@ -64,8 +69,9 @@ export async function handleSummaryRequest(body, options = {}) {
   }
 
   try {
-    const result = await generateCampgroundSummary({
+    const result = await getCampgroundSummary({
       campgroundId: validation.value.campgroundId,
+      forceRegenerate: validation.value.forceRegenerate ?? false,
       answerProvider: options.answerProvider,
       provider: options.provider,
     })
