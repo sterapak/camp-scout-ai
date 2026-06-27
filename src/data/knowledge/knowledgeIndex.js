@@ -5,6 +5,11 @@
 
 import { KNOWLEDGE_DOCUMENT_TYPES } from '../knowledgeSchema.js'
 import { getAllKnowledgeDocuments } from './documents.js'
+import {
+  getMeaningfulQueryTokens,
+  requiresExactTokenMatch,
+  tokenizeText,
+} from './queryTokens.js'
 
 /**
  * Tokenizes text into lowercase search terms.
@@ -12,10 +17,7 @@ import { getAllKnowledgeDocuments } from './documents.js'
  * @returns {string[]}
  */
 function tokenize(text) {
-  return text
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((token) => token.length > 1)
+  return tokenizeText(text).filter((token) => token.length > 1)
 }
 
 /**
@@ -103,6 +105,24 @@ export function getDocumentsByType(documentType) {
 }
 
 /**
+ * Returns true when an index token matches a query token.
+ * @param {string} indexToken
+ * @param {string} queryToken
+ * @returns {boolean}
+ */
+export function indexTokenMatchesQueryToken(indexToken, queryToken) {
+  if (indexToken === queryToken) {
+    return true
+  }
+
+  if (requiresExactTokenMatch(queryToken) || requiresExactTokenMatch(indexToken)) {
+    return false
+  }
+
+  return indexToken.includes(queryToken) || queryToken.includes(indexToken)
+}
+
+/**
  * Searches documents by keyword using the inverted index.
  * @param {string} keyword
  * @returns {import('../knowledgeSchema.js').KnowledgeDocument[]}
@@ -113,7 +133,7 @@ export function searchDocumentsByKeyword(keyword) {
     return getKnowledgeIndex().documents
   }
 
-  const queryTokens = tokenize(normalized)
+  const queryTokens = getMeaningfulQueryTokens(normalized)
   if (queryTokens.length === 0) {
     return []
   }
@@ -123,7 +143,7 @@ export function searchDocumentsByKeyword(keyword) {
 
   for (const token of queryTokens) {
     for (const [indexToken, docIds] of keywordIndex.entries()) {
-      if (indexToken.includes(token) || token.includes(indexToken)) {
+      if (indexTokenMatchesQueryToken(indexToken, token)) {
         for (const docId of docIds) {
           matchingIds.add(docId)
         }

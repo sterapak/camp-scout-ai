@@ -5,7 +5,9 @@
  */
 
 import { getCampgroundById } from '../campgroundData.js'
+import { inferCampgroundMatches } from './campgroundQueryMatch.js'
 import { getKnowledgeIndex, searchDocumentsByKeyword } from './knowledgeIndex.js'
+import { getMeaningfulQueryTokens, getQueryIntent } from './queryTokens.js'
 
 /**
  * @typedef {Object} RetrievalResult
@@ -26,29 +28,67 @@ import { getKnowledgeIndex, searchDocumentsByKeyword } from './knowledgeIndex.js
 export function scoreDocument(document, query, campgroundId = '') {
   let score = 0
   const normalizedQuery = query.trim().toLowerCase()
-  const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean)
+  const queryTokens = getMeaningfulQueryTokens(normalizedQuery)
+  const queryIntent = getQueryIntent(normalizedQuery)
+  const inferredMatches = inferCampgroundMatches(normalizedQuery)
 
   if (campgroundId && document.campgroundId === campgroundId) {
     score += 100
   }
 
+  const inferredMatch = inferredMatches.find((match) => match.id === document.campgroundId)
+  if (inferredMatch) {
+    score += inferredMatch.score * 30
+  }
+
   const titleLower = document.title.toLowerCase()
   const contentLower = document.content.toLowerCase()
+  const campgroundNameLower = (getCampgroundById(document.campgroundId)?.name ?? '').toLowerCase()
 
   for (const token of queryTokens) {
     if (titleLower.includes(token)) {
-      score += 10
+      score += 12
     }
     if (contentLower.includes(token)) {
-      score += 5
+      score += 6
     }
-    if (document.documentType.includes(token)) {
-      score += 3
+    if (campgroundNameLower.includes(token)) {
+      score += 18
     }
   }
 
   if (normalizedQuery && titleLower.includes(normalizedQuery)) {
+    score += 20
+  }
+
+  if (queryIntent.isCountQuestion) {
+    if (/\b\d+\b/.test(contentLower) || /\(\d+\)/.test(contentLower)) {
+      score += 20
+    }
+
+    if (queryIntent.mentionsCampsites && /\bcampsites?\b/.test(contentLower)) {
+      score += 35
+    }
+
+    if (queryIntent.mentionsCampgrounds && /\bcampgrounds?\b/.test(contentLower)) {
+      score += 25
+    }
+  }
+
+  if (
+    queryIntent.isCountQuestion
+    && document.documentType === 'description'
+    && (queryIntent.mentionsCampsites || queryIntent.mentionsCampgrounds)
+  ) {
     score += 15
+  }
+
+  if (
+    inferredMatch
+    && document.documentType === 'description'
+    && (queryIntent.isCountQuestion || queryIntent.mentionsCampsites || queryIntent.mentionsCampgrounds)
+  ) {
+    score += 20
   }
 
   return score

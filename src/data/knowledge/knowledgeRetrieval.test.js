@@ -63,4 +63,27 @@ describe('knowledgeRetrieval', () => {
       expect(result.document.documentType).toBe('alert')
     })
   })
+
+  it('ranks Silver Lake West docs above unrelated campgrounds for silver lake campsite questions', () => {
+    const results = retrieveDocuments({
+      query: 'how many camping sites at silver lake?',
+      limit: 3,
+    })
+
+    expect(results.length).toBeGreaterThan(0)
+    expect(results[0].document.campgroundId).toBe('silver-lake-west')
+
+    const combinedContent = results.map((result) => result.document.content).join(' ')
+    expect(combinedContent).toMatch(/forty-two \(42\) campsites|42 campsites/i)
+  })
+
+  it('ranks Silver Lake West docs for silver lake campground count questions', () => {
+    const results = retrieveDocuments({
+      query: 'how many campgrounds at silver lake?',
+      limit: 3,
+    })
+
+    expect(results.length).toBeGreaterThan(0)
+    expect(results.every((result) => result.document.campgroundId === 'silver-lake-west')).toBe(true)
+  })
 })
