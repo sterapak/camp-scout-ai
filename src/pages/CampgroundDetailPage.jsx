@@ -4,7 +4,8 @@ import { FiArrowLeft, FiExternalLink, FiMapPin } from 'react-icons/fi'
 import { postSummary, SummaryApiError } from '../api/summaryClient.js'
 import AvailabilityNotice from '../components/AvailabilityNotice'
 import CampgroundAiSummary from '../components/CampgroundAiSummary'
-import { getCampgroundById } from '../data/campgroundData'
+import CampgroundImage from '../components/CampgroundImage'
+import { getCampgroundById, getPrimaryImage } from '../data/campgroundData'
 import { getKnowledgeCampgroundIds } from '../data/knowledge/documents.js'
 
 export default function CampgroundDetailPage() {
@@ -44,6 +45,8 @@ export default function CampgroundDetailPage() {
           citations: result.citations,
           sources: result.sources,
           confidence: result.confidence,
+          generatedAt: result.generatedAt,
+          knowledgeSnapshot: result.knowledgeSnapshot,
         })
       } catch (error) {
         if (cancelled) {
@@ -77,6 +80,8 @@ export default function CampgroundDetailPage() {
     )
   }
 
+  const primaryImage = getPrimaryImage(campground)
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <Link to="/campgrounds" className="inline-flex items-center text-sm text-green-700 hover:text-green-900">
@@ -94,14 +99,25 @@ export default function CampgroundDetailPage() {
 
       <AvailabilityNotice />
 
+      {!hasKnowledge && (
+        <CampgroundImage image={primaryImage} campgroundName={campground.name} />
+      )}
+
       <CampgroundAiSummary
         status={summaryState.status}
         sections={summaryState.sections}
         citations={summaryState.citations}
         sources={summaryState.sources}
         confidence={summaryState.confidence}
+        generatedAt={summaryState.generatedAt}
+        knowledgeSnapshot={summaryState.knowledgeSnapshot}
         message={summaryState.message}
         errorMessage={summaryState.errorMessage}
+        imageSlot={
+          hasKnowledge ? (
+            <CampgroundImage image={primaryImage} campgroundName={campground.name} />
+          ) : undefined
+        }
       />
 
       <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-4">

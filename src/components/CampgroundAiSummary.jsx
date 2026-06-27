@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { FiChevronDown, FiChevronUp, FiExternalLink, FiZap } from 'react-icons/fi'
 import { getDocumentTypeLabel } from '../data/knowledgeSchema.js'
+import { formatGeneratedAt, formatKnowledgeSnapshotDate } from '../utils/formatGeneratedAt.js'
 
 /** @typedef {import('../server/rag/campgroundSummaryGenerator.js').CampgroundSummarySections} CampgroundSummarySections */
 
@@ -32,8 +33,11 @@ const CONFIDENCE_LABELS = {
  *   citations?: import('../server/rag/groundedAnswerGenerator.js').GroundedAnswerCitation[]
  *   sources?: import('../server/rag/answerTrust.js').UniqueSourceReference[]
  *   confidence?: import('../server/rag/answerTrust.js').AnswerConfidenceLevel
+ *   generatedAt?: string
+ *   knowledgeSnapshot?: import('../server/rag/knowledgeSnapshot.js').KnowledgeSnapshot
  *   message?: string
  *   errorMessage?: string
+ *   imageSlot?: React.ReactNode
  * }} props
  */
 export default function CampgroundAiSummary({
@@ -42,8 +46,11 @@ export default function CampgroundAiSummary({
   citations = [],
   sources = [],
   confidence,
+  generatedAt,
+  knowledgeSnapshot,
   message,
   errorMessage,
+  imageSlot,
 }) {
   const [expanded, setExpanded] = useState(true)
   const [showCitations, setShowCitations] = useState(false)
@@ -57,6 +64,10 @@ export default function CampgroundAiSummary({
       className="rounded-xl border border-green-100 bg-gradient-to-br from-green-50 via-white to-white p-6 shadow-sm"
       aria-label="AI campground summary"
     >
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,280px)_1fr] lg:items-start">
+        {imageSlot && <div className="lg:sticky lg:top-6">{imageSlot}</div>}
+
+        <div className="min-w-0 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2">
@@ -73,6 +84,20 @@ export default function CampgroundAiSummary({
             )}
           </div>
           <p className="text-xs text-gray-500">Generated from official campground sources</p>
+          {status === 'success' && generatedAt && (
+            <p className="text-xs text-gray-500">
+              Generated on {formatGeneratedAt(generatedAt)}
+            </p>
+          )}
+          {status === 'success' && knowledgeSnapshot && (
+            <p className="text-xs text-gray-500">
+              Knowledge snapshot
+              {knowledgeSnapshot.sourceName ? ` from ${knowledgeSnapshot.sourceName}` : ''}
+              {knowledgeSnapshot.lastFetchedAt
+                ? ` · verified ${formatKnowledgeSnapshotDate(knowledgeSnapshot.lastFetchedAt)}`
+                : ''}
+            </p>
+          )}
         </div>
 
         {status === 'success' && sections && (
@@ -181,6 +206,8 @@ export default function CampgroundAiSummary({
           )}
         </div>
       )}
+        </div>
+      </div>
     </section>
   )
 }
