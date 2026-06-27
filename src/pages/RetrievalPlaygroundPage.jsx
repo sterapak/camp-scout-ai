@@ -1,14 +1,23 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { AskApiError, postAsk } from '../api/askClient.js'
 import GeneratedAnswerPanel from '../components/GeneratedAnswerPanel'
+import QuestionHistoryPanel from '../components/QuestionHistoryPanel'
 import RetrievalContextPreview from '../components/RetrievalContextPreview'
 import RetrievalFilters from '../components/RetrievalFilters'
 import RetrievalResultCard from '../components/RetrievalResultCard'
+import SuggestedQuestions from '../components/SuggestedQuestions'
+import { getSuggestedQuestions } from '../data/suggestedQuestions.js'
 import { getCampgroundById } from '../data/campgroundData.js'
 import { getKnowledgeCampgroundIds } from '../data/knowledge/documents.js'
 import { getIndexedDocumentTypes } from '../data/knowledge/knowledgeIndex.js'
 import { retrieveDocuments } from '../data/knowledge/knowledgeRetrieval.js'
 import { buildRetrievalContext } from '../data/knowledge/retrievalContext.js'
+import {
+  addQuestionToHistory,
+  clearQuestionHistory,
+  loadQuestionHistory,
+} from '../utils/questionHistory.js'
+import { streamAnswerText } from '../utils/streamAnswerText.js'
 
 export default function RetrievalPlaygroundPage() {
   const [question, setQuestion] = useState('')
@@ -16,6 +25,11 @@ export default function RetrievalPlaygroundPage() {
   const [documentType, setDocumentType] = useState('')
   const [submittedQuery, setSubmittedQuery] = useState(null)
   const [answerState, setAnswerState] = useState({ status: 'idle' })
+  const [questionHistory, setQuestionHistory] = useState([])
+
+  useEffect(() => {
+    setQuestionHistory(loadQuestionHistory())
+  }, [])
 
   const campgroundOptions = useMemo(
     () =>
@@ -30,6 +44,11 @@ export default function RetrievalPlaygroundPage() {
   )
 
   const documentTypes = useMemo(() => getIndexedDocumentTypes(), [])
+
+  const suggestedQuestions = useMemo(
+    () => getSuggestedQuestions(campgroundId),
+    [campgroundId]
+  )
 
   const results = useMemo(() => {
     if (!submittedQuery) return []
@@ -58,8 +77,8 @@ export default function RetrievalPlaygroundPage() {
     })
   }
 
-  async function handleGenerateAnswer() {
-    const trimmedQuestion = question.trim()
+  async function handleGenerateAnswer(selectedQuestion = question, selectedCampgroundId = campgroundId) {
+    const trimmedQuestion = selectedQuestion.trim()
     if (!trimmedQuestion) return
 
     setAnswerState({ status: 'loading' })
@@ -67,8 +86,14 @@ export default function RetrievalPlaygroundPage() {
     try {
       const result = await postAsk({
         question: trimmedQuestion,
-        campgroundId,
+        campgroundId: selectedCampgroundId,
       })
+
+      const updatedHistory = addQuestionToHistory({
+        question: trimmedQuestion,
+        campgroundId: selectedCampgroundId,
+      })
+      setQuestionHistory(updatedHistory)
 
       if (result.status === 'insufficient_context') {
         setAnswerState({
@@ -80,11 +105,30 @@ export default function RetrievalPlaygroundPage() {
       }
 
       setAnswerState({
-        status: 'success',
+        status: 'streaming',
         answer: result.answer,
+        displayedAnswer: '',
         citations: result.citations,
+        sources: result.sources,
+        evidence: result.evidence,
+        confidence: result.confidence,
+        contradictionWarning: result.contradictionWarning,
         model: result.model,
       })
+
+      await streamAnswerText(result.answer, (partialAnswer) => {
+        setAnswerState((current) => ({
+          ...current,
+          status: 'streaming',
+          displayedAnswer: partialAnswer,
+        }))
+      })
+
+      setAnswerState((current) => ({
+        ...current,
+        status: 'success',
+        displayedAnswer: result.answer,
+      }))
     } catch (error) {
       const errorMessage =
         error instanceof AskApiError
@@ -92,6 +136,23 @@ export default function RetrievalPlaygroundPage() {
           : 'Answer generation failed. Please try again.'
       setAnswerState({ status: 'error', errorMessage })
     }
+  }
+
+  function handleSuggestedQuestionSelect(selectedQuestion) {
+    setQuestion(selectedQuestion)
+  }
+
+  function handleHistorySelect(entry) {
+    setQuestion(entry.question)
+    if (entry.campgroundId) {
+      setCampgroundId(entry.campgroundId)
+    }
+    handleGenerateAnswer(entry.question, entry.campgroundId ?? campgroundId)
+  }
+
+  function handleClearHistory() {
+    clearQuestionHistory()
+    setQuestionHistory([])
   }
 
   return (
@@ -115,15 +176,33 @@ export default function RetrievalPlaygroundPage() {
         onCampgroundChange={setCampgroundId}
         onDocumentTypeChange={setDocumentType}
         onSubmit={handleRetrieve}
-        onGenerateAnswer={handleGenerateAnswer}
-        isGeneratingAnswer={answerState.status === 'loading'}
+        onGenerateAnswer={() => handleGenerateAnswer()}
+        isGeneratingAnswer={answerState.status === 'loading' || answerState.status === 'streaming'}
+      />
+
+      {campgroundId && (
+        <SuggestedQuestions
+          questions={suggestedQuestions}
+          onSelect={handleSuggestedQuestionSelect}
+        />
+      )}
+
+      <QuestionHistoryPanel
+        history={questionHistory}
+        onSelect={handleHistorySelect}
+        onClear={handleClearHistory}
       />
 
       <GeneratedAnswerPanel
         status={answerState.status}
         answer={answerState.answer}
+        displayedAnswer={answerState.displayedAnswer}
         message={answerState.message}
         citations={answerState.citations}
+        sources={answerState.sources}
+        evidence={answerState.evidence}
+        confidence={answerState.confidence}
+        contradictionWarning={answerState.contradictionWarning}
         model={answerState.model}
         errorMessage={answerState.errorMessage}
       />

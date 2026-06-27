@@ -4,10 +4,22 @@
  * Server-only; never import from React client code.
  */
 
-import { retrieveDocuments } from '../../data/knowledge/knowledgeRetrieval.js'
 import { buildRetrievalContext } from '../../data/knowledge/retrievalContext.js'
 import { createAnswerProvider } from '../openai/createAnswerProvider.js'
 import { DEFAULT_MAX_OUTPUT_TOKENS } from '../openai/answerProvider.js'
+import {
+  buildSupportingEvidence,
+  calculateAnswerConfidence,
+  deduplicateSourcesByUrl,
+  stripGenericSourcesBlock,
+  transformSourceReferences,
+} from './answerTrust.js'
+import { buildGroundingMetrics } from './citationValidation.js'
+import { detectContradictions } from './contradictionDetection.js'
+import {
+  logIntentClassification,
+  retrieveDocumentsWithIntent,
+} from './intentRetrieval.js'
 import {
   buildCapabilityGuardrailRules,
   classifyQuery,
@@ -24,6 +36,11 @@ const DEFAULT_INSUFFICIENT_MESSAGE =
 
 /**
  * @typedef {import('../../data/knowledge/retrievalContext.js').RetrievalContextSource} RetrievalContextSource
+ * @typedef {import('./answerTrust.js').AnswerConfidenceLevel} AnswerConfidenceLevel
+ * @typedef {import('./answerTrust.js').UniqueSourceReference} UniqueSourceReference
+ * @typedef {import('./answerTrust.js').SupportingEvidenceItem} SupportingEvidenceItem
+ * @typedef {import('./contradictionDetection.js').ContradictionWarning} ContradictionWarning
+ * @typedef {import('./queryClassifier.js').QueryCategory} QueryCategory
  */
 
 /**
@@ -44,6 +61,12 @@ const DEFAULT_INSUFFICIENT_MESSAGE =
  * @property {string} model
  * @property {number} [inputTokens]
  * @property {number} [outputTokens]
+ * @property {AnswerConfidenceLevel} confidence
+ * @property {UniqueSourceReference[]} sources
+ * @property {SupportingEvidenceItem[]} evidence
+ * @property {QueryCategory} intent
+ * @property {ContradictionWarning | null} [contradictionWarning]
+ * @property {{ coverageRatio: number, warnings: string[] }} [groundingMetrics]
  */
 
 /**
@@ -58,24 +81,42 @@ const DEFAULT_INSUFFICIENT_MESSAGE =
  */
 
 /**
- * Builds system instructions requiring context-only answers with citations.
+ * Builds system instructions requiring context-only answers with organization-based citations.
  * @param {number} sourceCount
- * @param {import('./queryClassifier.js').QueryCategory} [queryCategory]
+ * @param {QueryCategory} [queryCategory]
  * @param {string[]} [campgroundNames]
+ * @param {RetrievalContextSource[]} [sources]
  * @returns {string}
  */
-export function buildGroundedAnswerInstructions(sourceCount, queryCategory, campgroundNames = []) {
+export function buildGroundedAnswerInstructions(
+  sourceCount,
+  queryCategory,
+  campgroundNames = [],
+  sources = [],
+) {
+  const organizationExamples = sources
+    .slice(0, 3)
+    .map((source) => formatOrganizationReference(source.sourceName))
+    .join(', ')
+
   const baseRules = [
     'You are Camp Scout AI, a helpful assistant for Northern California campground visitors.',
     'Answer using ONLY the retrieved source excerpts provided in the user input.',
     '',
     'Rules:',
     '1. Answer only from the provided context. Do not use outside knowledge.',
-    '2. Cite every factual claim with [Source N] where N is 1 through ' + sourceCount + '.',
-    '3. End with a "Sources:" section listing each cited source with sourceName and sourceUrl.',
-    '4. If the context does not contain enough information, say so clearly.',
-    '5. Never invent campground names, policies, fees, availability, or reservation details.',
-    '6. Use plain, friendly language appropriate for campers planning a trip.',
+    '2. Reference organizations by name instead of generic labels like "Source 1".',
+    organizationExamples
+      ? `   Example phrasing: "According to ${organizationExamples}…"`
+      : '   Example phrasing: "According to the National Park Service…"',
+    '3. Cite every factual claim inline using the organization name from the source metadata.',
+    '4. Synthesize information from all ' + sourceCount + ' retrieved documents into one coherent answer.',
+    '5. Remove duplicate facts — state each fact once even if multiple sources repeat it.',
+    '6. If sources conflict, present both versions with attribution instead of merging them silently.',
+    '7. If the context does not contain enough information, say so clearly.',
+    '8. Never invent campground names, policies, fees, availability, or reservation details.',
+    '9. Use plain, friendly language appropriate for campers planning a trip.',
+    '10. Do not include a generic "Sources:" list at the end — source links are shown separately in the UI.',
   ]
 
   const guardrailRules = buildCapabilityGuardrailRules(queryCategory ?? 'factual', campgroundNames)
@@ -139,8 +180,30 @@ export function buildGuardrailAnswerResponse(answer) {
     status: SUCCESS_STATUS,
     answer,
     citations: [],
+    sources: [],
+    evidence: [],
+    confidence: 'high',
+    intent: 'factual',
     model: 'capability-guardrail',
   }
+}
+
+/**
+ * Formats an organization name for prompt examples.
+ * @param {string} sourceName
+ * @returns {string}
+ */
+function formatOrganizationReference(sourceName) {
+  const trimmed = (sourceName ?? '').trim()
+  if (trimmed.length === 0) {
+    return 'the official source'
+  }
+
+  if (/^(the|a|an)\s/i.test(trimmed)) {
+    return trimmed
+  }
+
+  return `the ${trimmed}`
 }
 
 /**
@@ -177,11 +240,19 @@ export async function generateGroundedAnswer({
     return buildGuardrailAnswerResponse(queryClassification.shortCircuitMessage)
   }
 
-  const results = retrieveDocuments({
+  const results = retrieveDocumentsWithIntent({
     query: trimmedQuestion,
     campgroundId,
     documentType,
     limit: topDocumentCount,
+    queryCategory: queryClassification.category,
+  })
+
+  logIntentClassification({
+    question: trimmedQuestion,
+    queryCategory: queryClassification.category,
+    campgroundNames: queryClassification.campgroundNames,
+    resultCount: results.length,
   })
 
   const relevantResults = filterRelevantResults(results)
@@ -202,15 +273,46 @@ export async function generateGroundedAnswer({
       context.sourceCount,
       queryClassification.category,
       queryClassification.campgroundNames,
+      context.sources,
     ),
     input: context.promptContext,
     maxOutputTokens,
   })
 
+  const citations = context.sources.map(toGroundedAnswerCitation)
+  const uniqueSources = deduplicateSourcesByUrl(context.sources)
+  const evidence = buildSupportingEvidence(relevantResults)
+  const confidence = calculateAnswerConfidence(
+    relevantResults.map((result) => result.relevanceScore),
+  )
+  const contradictionWarning = detectContradictions(relevantResults)
+
+  let answer = transformSourceReferences(generationResult.text, context.sources)
+  answer = stripGenericSourcesBlock(answer)
+
+  if (contradictionWarning) {
+    answer = `${answer}\n\nNote: ${contradictionWarning.message}`
+  }
+
+  const groundingMetrics = buildGroundingMetrics({
+    answer,
+    citationCount: citations.length,
+    confidence,
+  })
+
   return {
     status: SUCCESS_STATUS,
-    answer: generationResult.text,
-    citations: context.sources.map(toGroundedAnswerCitation),
+    answer,
+    citations,
+    sources: uniqueSources,
+    evidence,
+    confidence,
+    intent: queryClassification.category,
+    contradictionWarning,
+    groundingMetrics: {
+      coverageRatio: groundingMetrics.coverageRatio,
+      warnings: groundingMetrics.warnings,
+    },
     model: generationResult.model,
     inputTokens: generationResult.inputTokens,
     outputTokens: generationResult.outputTokens,
