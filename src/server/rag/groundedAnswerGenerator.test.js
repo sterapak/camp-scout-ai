@@ -16,12 +16,15 @@ import { QUERY_CATEGORY_COMPARISON, QUERY_CATEGORY_RECOMMENDATION } from './quer
 import { retrieveDocuments } from '../../data/knowledge/knowledgeRetrieval.js'
 
 describe('groundedAnswerGenerator helpers', () => {
-  it('builds instructions that require citations for each source', () => {
-    const instructions = buildGroundedAnswerInstructions(2)
+  it('builds instructions that require organization-based citations', () => {
+    const instructions = buildGroundedAnswerInstructions(2, undefined, [], [
+      { sourceName: 'National Park Service', sourceUrl: 'https://example.com' },
+    ])
 
     expect(instructions).toContain('Answer using ONLY the retrieved source excerpts')
-    expect(instructions).toContain('[Source N] where N is 1 through 2')
-    expect(instructions).toContain('Sources:')
+    expect(instructions).toContain('Reference organizations by name instead of generic labels')
+    expect(instructions).toContain('According to the National Park Service')
+    expect(instructions).not.toContain('[Source N] where N is 1 through 2')
   })
 
   it('adds comparison guardrails to instructions', () => {
@@ -86,13 +89,17 @@ describe('groundedAnswerGenerator helpers', () => {
       status: SUCCESS_STATUS,
       answer: 'Review ratings are not available yet.',
       citations: [],
+      sources: [],
+      evidence: [],
+      confidence: 'high',
+      intent: 'factual',
       model: 'capability-guardrail',
     })
   })
 })
 
 describe('generateGroundedAnswer', () => {
-  it('returns an answer with citations on the happy path', async () => {
+  it('returns an answer with citations, sources, evidence, and confidence on the happy path', async () => {
     const result = await generateGroundedAnswer({
       question: 'What are the bear food storage rules?',
       campgroundId: 'yosemite-upper-pines',
@@ -103,6 +110,10 @@ describe('generateGroundedAnswer', () => {
     expect(result.answer).toContain('Fake provider answer for:')
     expect(result.citations.length).toBeGreaterThan(0)
     expect(result.citations.length).toBeLessThanOrEqual(3)
+    expect(result.sources.length).toBeGreaterThan(0)
+    expect(result.evidence.length).toBe(result.citations.length)
+    expect(['high', 'medium', 'low']).toContain(result.confidence)
+    expect(result.intent).toBe('factual')
 
     for (const citation of result.citations) {
       expect(citation.sourceName).toBeTruthy()
@@ -112,9 +123,48 @@ describe('generateGroundedAnswer', () => {
     expect(result.model).toBeTruthy()
   })
 
-  it('passes retrieved context and citation instructions to the provider', async () => {
+  it('deduplicates duplicate source URLs in the sources list', async () => {
     const generateAnswer = jest.fn(async () => ({
-      text: 'Grounded answer with [Source 1] citation.',
+      text: 'Answer with [Source 1] and [Source 2] references.',
+      model: 'fake-model',
+      inputTokens: 10,
+      outputTokens: 5,
+    }))
+
+    const result = await generateGroundedAnswer({
+      question: 'What are the bear food storage rules?',
+      campgroundId: 'yosemite-upper-pines',
+      topDocumentCount: 3,
+      answerProvider: { name: 'fake', generateAnswer },
+    })
+
+    expect(result.status).toBe(SUCCESS_STATUS)
+
+    const uniqueUrls = new Set(result.sources.map((source) => source.sourceUrl))
+    expect(result.sources.length).toBe(uniqueUrls.size)
+  })
+
+  it('transforms generic Source N references into organization names', async () => {
+    const generateAnswer = jest.fn(async () => ({
+      text: 'Food must be stored in lockers [Source 1].',
+      model: 'fake-model',
+      inputTokens: 10,
+      outputTokens: 5,
+    }))
+
+    const result = await generateGroundedAnswer({
+      question: 'What are the bear food storage rules?',
+      campgroundId: 'yosemite-upper-pines',
+      answerProvider: { name: 'fake', generateAnswer },
+    })
+
+    expect(result.answer).not.toContain('[Source 1]')
+    expect(result.answer).toMatch(/the National Park Service|the official source/i)
+  })
+
+  it('passes retrieved context and organization citation instructions to the provider', async () => {
+    const generateAnswer = jest.fn(async () => ({
+      text: 'Grounded answer with organization citation.',
       model: 'fake-model',
       inputTokens: 10,
       outputTokens: 5,
@@ -129,8 +179,8 @@ describe('generateGroundedAnswer', () => {
     expect(generateAnswer).toHaveBeenCalledTimes(1)
 
     const request = generateAnswer.mock.calls[0][0]
-    expect(request.instructions).toContain('[Source N]')
-    expect(request.instructions).toContain('Sources:')
+    expect(request.instructions).toContain('Reference organizations by name')
+    expect(request.instructions).toContain('Synthesize information')
     expect(request.input).toContain('User question: What are the reservation rules?')
     expect(request.input).toContain('The following official campground knowledge')
     expect(request.maxOutputTokens).toBe(GROUNDED_ANSWER_MAX_OUTPUT_TOKENS)

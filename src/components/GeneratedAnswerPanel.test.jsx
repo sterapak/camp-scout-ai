@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import GeneratedAnswerPanel from './GeneratedAnswerPanel'
 
 describe('GeneratedAnswerPanel', () => {
@@ -12,18 +13,40 @@ describe('GeneratedAnswerPanel', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Generating answer')
   })
 
-  it('shows a success answer with model and citations', () => {
+  it('shows a success answer with confidence, sources, citations, and evidence', async () => {
+    const user = userEvent.setup()
+
     render(
       <GeneratedAnswerPanel
         status="success"
-        answer="Store food in bear boxes."
+        answer="According to the National Park Service, store food in bear boxes."
         model="gpt-4o-mini"
+        confidence="high"
+        sources={[
+          {
+            sourceName: 'National Park Service',
+            sourceUrl: 'https://example.com/bears',
+            authorityRank: 1,
+          },
+        ]}
         citations={[
           {
             id: 'doc-1',
             title: 'Bear Safety',
-            sourceName: 'NPS',
+            sourceName: 'National Park Service',
             sourceUrl: 'https://example.com/bears',
+            campgroundName: 'Upper Pines',
+            documentType: 'regulation',
+          },
+        ]}
+        evidence={[
+          {
+            citationId: 'doc-1',
+            citationIndex: 1,
+            excerpt: 'Store food in bear-resistant lockers.',
+            sourceName: 'National Park Service',
+            sourceUrl: 'https://example.com/bears',
+            title: 'Bear Safety',
             campgroundName: 'Upper Pines',
             documentType: 'regulation',
           },
@@ -31,13 +54,38 @@ describe('GeneratedAnswerPanel', () => {
       />
     )
 
-    expect(screen.getByText('Store food in bear boxes.')).toBeInTheDocument()
+    expect(
+      screen.getByText('According to the National Park Service, store food in bear boxes.')
+    ).toBeInTheDocument()
+    expect(screen.getByText('High confidence')).toBeInTheDocument()
     expect(screen.getByText('Model: gpt-4o-mini')).toBeInTheDocument()
+    expect(screen.getByText('Sources')).toBeInTheDocument()
+    expect(screen.getByText('National Park Service')).toBeInTheDocument()
     expect(screen.getByText('[1] Bear Safety')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Source' })).toHaveAttribute(
+
+    await user.click(screen.getByRole('button', { name: 'Show Evidence' }))
+    expect(screen.getByText('Store food in bear-resistant lockers.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Citation [1]' })).toHaveAttribute(
       'href',
-      'https://example.com/bears'
+      '#citation-doc-1'
     )
+  })
+
+  it('shows contradiction warnings', () => {
+    render(
+      <GeneratedAnswerPanel
+        status="success"
+        answer="Official sources disagree."
+        confidence="medium"
+        contradictionWarning={{
+          topic: 'Dogs allowed',
+          message: 'Official sources disagree about dogs allowed.',
+          conflictingSources: [],
+        }}
+      />
+    )
+
+    expect(screen.getByText('Conflicting official sources detected')).toBeInTheDocument()
   })
 
   it('shows insufficient context message and citations', () => {
