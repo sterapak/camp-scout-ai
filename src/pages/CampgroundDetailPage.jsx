@@ -1,12 +1,69 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { FiArrowLeft, FiExternalLink, FiMapPin } from 'react-icons/fi'
+import { postSummary, SummaryApiError } from '../api/summaryClient.js'
 import AvailabilityNotice from '../components/AvailabilityNotice'
+import CampgroundAiSummary from '../components/CampgroundAiSummary'
 import { getCampgroundById } from '../data/campgroundData'
+import { getKnowledgeCampgroundIds } from '../data/knowledge/documents.js'
 
 export default function CampgroundDetailPage() {
   const { id } = useParams()
   const campground = getCampgroundById(id)
+  const hasKnowledge = getKnowledgeCampgroundIds().includes(id ?? '')
+  const [summaryState, setSummaryState] = useState({ status: hasKnowledge ? 'loading' : 'idle' })
+
+  useEffect(() => {
+    if (!campground || !hasKnowledge) {
+      return undefined
+    }
+
+    let cancelled = false
+
+    async function loadSummary() {
+      setSummaryState({ status: 'loading' })
+
+      try {
+        const result = await postSummary({ campgroundId: campground.id })
+
+        if (cancelled) {
+          return
+        }
+
+        if (result.status === 'insufficient_context') {
+          setSummaryState({
+            status: 'insufficient_context',
+            message: result.message,
+          })
+          return
+        }
+
+        setSummaryState({
+          status: 'success',
+          sections: result.sections,
+          citations: result.citations,
+          sources: result.sources,
+          confidence: result.confidence,
+        })
+      } catch (error) {
+        if (cancelled) {
+          return
+        }
+
+        const errorMessage =
+          error instanceof SummaryApiError
+            ? error.message
+            : 'Summary generation failed. Please try again.'
+        setSummaryState({ status: 'error', errorMessage })
+      }
+    }
+
+    loadSummary()
+
+    return () => {
+      cancelled = true
+    }
+  }, [campground, hasKnowledge])
 
   if (!campground) {
     return (
@@ -36,6 +93,16 @@ export default function CampgroundDetailPage() {
       </header>
 
       <AvailabilityNotice />
+
+      <CampgroundAiSummary
+        status={summaryState.status}
+        sections={summaryState.sections}
+        citations={summaryState.citations}
+        sources={summaryState.sources}
+        confidence={summaryState.confidence}
+        message={summaryState.message}
+        errorMessage={summaryState.errorMessage}
+      />
 
       <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-4">
         <h3 className="text-lg font-medium text-gray-900">About</h3>

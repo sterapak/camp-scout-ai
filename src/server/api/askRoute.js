@@ -1,11 +1,13 @@
 /**
- * HTTP route for POST /api/ask.
+ * HTTP routes for Camp Scout AI API endpoints.
  * Server-only; wired into Vite dev/preview servers via askApiPlugin.
  */
 
 import { handleAskRequest, INVALID_JSON_ERROR } from './askHandler.js'
+import { handleSummaryRequest } from './summaryHandler.js'
 
 export const ASK_ROUTE_PATH = '/api/ask'
+export const SUMMARY_ROUTE_PATH = '/api/summary'
 
 /**
  * Reads and parses a JSON request body from a Node HTTP request.
@@ -53,7 +55,7 @@ export function sendJsonResponse(res, statusCode, body) {
 }
 
 /**
- * Creates Connect-compatible middleware for POST /api/ask.
+ * Creates Connect-compatible middleware for Camp Scout AI API routes.
  * @param {{
  *   answerProvider?: import('../openai/answerProvider.js').AnswerProvider,
  *   provider?: import('../openai/createAnswerProvider.js').AnswerProviderName,
@@ -62,10 +64,10 @@ export function sendJsonResponse(res, statusCode, body) {
  * @returns {(req: import('http').IncomingMessage, res: import('http').ServerResponse, next: () => void) => Promise<void>}
  */
 export function createAskRouteMiddleware(options = {}) {
-  return async function askRouteMiddleware(req, res, next) {
+  return async function apiRouteMiddleware(req, res, next) {
     const pathname = req.url?.split('?')[0] ?? ''
 
-    if (pathname !== ASK_ROUTE_PATH) {
+    if (pathname !== ASK_ROUTE_PATH && pathname !== SUMMARY_ROUTE_PATH) {
       next()
       return
     }
@@ -79,7 +81,10 @@ export function createAskRouteMiddleware(options = {}) {
     try {
       options.reloadOpenAiEnv?.()
       const body = await readJsonRequestBody(req)
-      const response = await handleAskRequest(body, options)
+      const response =
+        pathname === SUMMARY_ROUTE_PATH
+          ? await handleSummaryRequest(body, options)
+          : await handleAskRequest(body, options)
       sendJsonResponse(res, response.statusCode, response.body)
     } catch (error) {
       if (error instanceof SyntaxError) {
