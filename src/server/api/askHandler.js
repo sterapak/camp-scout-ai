@@ -4,8 +4,8 @@
  */
 
 import { generateGroundedAnswer } from '../rag/groundedAnswerGenerator.js'
-import { MissingOpenAiApiKeyError, OpenAiResponseError } from '../openai/errors.js'
-import { logOpenAiDiagnostic } from '../openai/logOpenAiDiagnostic.js'
+import { mapOpenAiErrorToHttpResponse } from '../openai/mapOpenAiHttpError.js'
+import { validateAskRequestGuardrails } from './requestGuardrails.js'
 
 /**
  * @typedef {Object} AskRequestBody
@@ -71,6 +71,11 @@ export function validateAskRequestBody(body) {
     value.topDocumentCount = body.topDocumentCount
   }
 
+  const guardrails = validateAskRequestGuardrails(value)
+  if (!guardrails.ok) {
+    return guardrails
+  }
+
   return { ok: true, value }
 }
 
@@ -80,6 +85,7 @@ export function validateAskRequestBody(body) {
  * @param {{
  *   answerProvider?: import('../openai/answerProvider.js').AnswerProvider,
  *   provider?: import('../openai/createAnswerProvider.js').AnswerProviderName,
+ *   protectedAccess?: boolean,
  * }} [options]
  * @returns {Promise<AskHttpResponse>}
  */
@@ -100,6 +106,7 @@ export async function handleAskRequest(body, options = {}) {
       topDocumentCount: validation.value.topDocumentCount,
       answerProvider: options.answerProvider,
       provider: options.provider,
+      protectedAccess: options.protectedAccess === true,
     })
 
     return {
@@ -107,29 +114,16 @@ export async function handleAskRequest(body, options = {}) {
       body: result,
     }
   } catch (error) {
-    if (error instanceof MissingOpenAiApiKeyError) {
-      return {
-        statusCode: 503,
-        body: { error: 'Answer generation is not available.' },
-      }
-    }
+    const configuredProvider = options.provider ?? process.env.OPENAI_ANSWER_PROVIDER ?? 'fake'
+    const mapped = mapOpenAiErrorToHttpResponse(error, {
+      scope: 'handleAskRequest.openAiResponseError',
+      provider: configuredProvider === 'openai' ? 'openai' : 'fake',
+      model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
+      unavailableMessage: 'Answer generation is not available.',
+      failedMessage: 'Answer generation failed. Please try again.',
+    })
 
-    if (error instanceof OpenAiResponseError) {
-      const configuredProvider = options.provider ?? process.env.OPENAI_ANSWER_PROVIDER ?? 'fake'
-      logOpenAiDiagnostic('handleAskRequest.openAiResponseError', {
-        provider: configuredProvider === 'openai' ? 'openai' : 'fake',
-        model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
-        responseStatus: error.status,
-        errorCode: error.errorCode,
-        errorMessage: error.message,
-      })
-      return {
-        statusCode: 502,
-        body: { error: 'Answer generation failed. Please try again.' },
-      }
-    }
-
-    throw error
+    return mapped
   }
 }
 

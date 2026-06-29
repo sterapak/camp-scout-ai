@@ -4,8 +4,8 @@
  */
 
 import { getCampgroundSummary } from '../rag/campgroundSummaryService.js'
-import { MissingOpenAiApiKeyError, OpenAiResponseError } from '../openai/errors.js'
-import { logOpenAiDiagnostic } from '../openai/logOpenAiDiagnostic.js'
+import { mapOpenAiErrorToHttpResponse } from '../openai/mapOpenAiHttpError.js'
+import { validateSummaryRequestGuardrails } from './requestGuardrails.js'
 
 /**
  * @typedef {Object} SummaryRequestBody
@@ -47,6 +47,11 @@ export function validateSummaryRequestBody(body) {
     value.forceRegenerate = body.forceRegenerate
   }
 
+  const guardrails = validateSummaryRequestGuardrails(value)
+  if (!guardrails.ok) {
+    return guardrails
+  }
+
   return { ok: true, value }
 }
 
@@ -56,6 +61,7 @@ export function validateSummaryRequestBody(body) {
  * @param {{
  *   answerProvider?: import('../openai/answerProvider.js').AnswerProvider,
  *   provider?: import('../openai/createAnswerProvider.js').AnswerProviderName,
+ *   protectedAccess?: boolean,
  * }} [options]
  * @returns {Promise<{ statusCode: number, body: import('../rag/campgroundSummaryGenerator.js').CampgroundSummaryResult | { error: string } }>}
  */
@@ -74,6 +80,7 @@ export async function handleSummaryRequest(body, options = {}) {
       forceRegenerate: validation.value.forceRegenerate ?? false,
       answerProvider: options.answerProvider,
       provider: options.provider,
+      protectedAccess: options.protectedAccess === true,
     })
 
     return {
@@ -81,29 +88,14 @@ export async function handleSummaryRequest(body, options = {}) {
       body: result,
     }
   } catch (error) {
-    if (error instanceof MissingOpenAiApiKeyError) {
-      return {
-        statusCode: 503,
-        body: { error: 'Summary generation is not available.' },
-      }
-    }
-
-    if (error instanceof OpenAiResponseError) {
-      const configuredProvider = options.provider ?? process.env.OPENAI_ANSWER_PROVIDER ?? 'fake'
-      logOpenAiDiagnostic('handleSummaryRequest.openAiResponseError', {
-        provider: configuredProvider === 'openai' ? 'openai' : 'fake',
-        model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
-        responseStatus: error.status,
-        errorCode: error.errorCode,
-        errorMessage: error.message,
-      })
-      return {
-        statusCode: 502,
-        body: { error: 'Summary generation failed. Please try again.' },
-      }
-    }
-
-    throw error
+    const configuredProvider = options.provider ?? process.env.OPENAI_ANSWER_PROVIDER ?? 'fake'
+    return mapOpenAiErrorToHttpResponse(error, {
+      scope: 'handleSummaryRequest.openAiResponseError',
+      provider: configuredProvider === 'openai' ? 'openai' : 'fake',
+      model: process.env.OPENAI_MODEL ?? 'gpt-4o-mini',
+      unavailableMessage: 'Summary generation is not available.',
+      failedMessage: 'Summary generation failed. Please try again.',
+    })
   }
 }
 

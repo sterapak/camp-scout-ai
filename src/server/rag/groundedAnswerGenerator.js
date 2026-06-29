@@ -7,6 +7,11 @@
 import { buildRetrievalContext } from '../../data/knowledge/retrievalContext.js'
 import { createAnswerProvider } from '../openai/createAnswerProvider.js'
 import { DEFAULT_MAX_OUTPUT_TOKENS } from '../openai/answerProvider.js'
+import { logOpenAiDiagnostic } from '../openai/logOpenAiDiagnostic.js'
+import {
+  resolveMaxContextTokens,
+  resolveMaxOutputTokens,
+} from '../openai/promptLimits.js'
 import {
   buildSupportingEvidence,
   calculateAnswerConfidence,
@@ -27,6 +32,7 @@ import {
 
 export const DEFAULT_TOP_DOCUMENT_COUNT = 3
 export const GROUNDED_ANSWER_MAX_OUTPUT_TOKENS = DEFAULT_MAX_OUTPUT_TOKENS
+export const GROUNDED_ANSWER_MAX_CONTEXT_TOKENS = resolveMaxContextTokens()
 
 export const INSUFFICIENT_CONTEXT_STATUS = 'insufficient_context'
 export const SUCCESS_STATUS = 'success'
@@ -214,8 +220,10 @@ function formatOrganizationReference(sourceName) {
  *   documentType?: string,
  *   topDocumentCount?: number,
  *   maxOutputTokens?: number,
+ *   maxContextTokens?: number,
  *   answerProvider?: import('../openai/answerProvider.js').AnswerProvider,
  *   provider?: import('../openai/createAnswerProvider.js').AnswerProviderName,
+ *   protectedAccess?: boolean,
  * }} [options]
  * @returns {Promise<GroundedAnswerResult>}
  */
@@ -225,8 +233,10 @@ export async function generateGroundedAnswer({
   documentType = '',
   topDocumentCount = DEFAULT_TOP_DOCUMENT_COUNT,
   maxOutputTokens = GROUNDED_ANSWER_MAX_OUTPUT_TOKENS,
+  maxContextTokens = GROUNDED_ANSWER_MAX_CONTEXT_TOKENS,
   answerProvider,
   provider,
+  protectedAccess = false,
 } = {}) {
   const trimmedQuestion = (question ?? '').trim()
 
@@ -264,9 +274,23 @@ export async function generateGroundedAnswer({
   const context = buildRetrievalContext({
     question: trimmedQuestion,
     results: relevantResults,
+    maxContextTokens,
   })
 
-  const providerInstance = answerProvider ?? createAnswerProvider({ provider })
+  const providerInstance = answerProvider ?? createAnswerProvider({
+    provider,
+    protectedAccess,
+  })
+  const resolvedMaxOutputTokens = resolveMaxOutputTokens(maxOutputTokens)
+  const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini'
+
+  logOpenAiDiagnostic('generateGroundedAnswer.request', {
+    provider: providerInstance.name,
+    model,
+    promptTokenEstimate: context.estimatedPromptTokens,
+    maxOutputTokens: resolvedMaxOutputTokens,
+    contextTruncated: context.contextTruncated ?? false,
+  })
 
   const generationResult = await providerInstance.generateAnswer({
     instructions: buildGroundedAnswerInstructions(
@@ -276,7 +300,7 @@ export async function generateGroundedAnswer({
       context.sources,
     ),
     input: context.promptContext,
-    maxOutputTokens,
+    maxOutputTokens: resolvedMaxOutputTokens,
   })
 
   const citations = context.sources.map(toGroundedAnswerCitation)

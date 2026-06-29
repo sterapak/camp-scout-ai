@@ -44,6 +44,27 @@ describe('validateAskRequestBody', () => {
       expect(result.body.error).toBe(EMPTY_QUESTION_ERROR)
     }
   })
+
+  it('rejects an oversized question', () => {
+    const result = validateAskRequestBody({ question: 'a'.repeat(501) })
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.statusCode).toBe(400)
+    }
+  })
+
+  it('rejects an excessive topDocumentCount', () => {
+    const result = validateAskRequestBody({
+      question: 'What are the bear rules?',
+      topDocumentCount: 99,
+    })
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.statusCode).toBe(400)
+    }
+  })
 })
 
 describe('handleAskRequest', () => {
@@ -125,6 +146,31 @@ describe('handleAskRequest', () => {
     expect(response.statusCode).toBe(502)
     expect(response.body).toEqual({ error: 'Answer generation failed. Please try again.' })
     expect(JSON.stringify(response.body)).not.toMatch(/OPENAI_API_KEY|Upstream failure|sk-proj-|sk-live-/)
+  })
+
+  it('returns a clear quota error instead of 502 when OpenAI quota is exhausted', async () => {
+    const response = await handleAskRequest(
+      {
+        question: 'What are the bear food storage rules?',
+        campgroundId: 'yosemite-upper-pines',
+      },
+      {
+        answerProvider: {
+          name: 'openai',
+          async generateAnswer() {
+            throw new OpenAiResponseError('You exceeded your current quota.', {
+              status: 429,
+              errorCode: 'insufficient_quota',
+            })
+          },
+        },
+      },
+    )
+
+    expect(response.statusCode).toBe(503)
+    expect(response.statusCode).not.toBe(502)
+    expect(response.body.error).toMatch(/quota|credits/i)
+    expect(JSON.stringify(response.body)).not.toMatch(/OPENAI_API_KEY|You exceeded|sk-proj-|sk-live-/)
   })
 
   it('retrieves Silver Lake West campsite count for camping site questions', () => {

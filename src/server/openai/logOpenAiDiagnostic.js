@@ -42,6 +42,9 @@ export function describeOpenAiApiKey(apiKey) {
  *   errorCode?: string,
  *   errorMessage?: string,
  *   apiKeyFingerprint?: string,
+ *   promptTokenEstimate?: number,
+ *   maxOutputTokens?: number,
+ *   contextTruncated?: boolean,
  * }} details
  */
 export function logOpenAiDiagnostic(scope, details = {}) {
@@ -53,6 +56,9 @@ export function logOpenAiDiagnostic(scope, details = {}) {
     errorCode: details.errorCode ?? null,
     errorMessage: details.errorMessage ?? null,
     apiKeyFingerprint: details.apiKeyFingerprint ?? describeOpenAiApiKey(process.env.OPENAI_API_KEY),
+    promptTokenEstimate: details.promptTokenEstimate ?? null,
+    maxOutputTokens: details.maxOutputTokens ?? null,
+    contextTruncated: details.contextTruncated ?? null,
   }
 
   if (details.explicitProvider !== undefined) {

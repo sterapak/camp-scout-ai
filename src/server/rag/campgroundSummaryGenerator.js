@@ -192,6 +192,7 @@ export function buildInsufficientSummaryResponse(
  *   maxOutputTokens?: number,
  *   answerProvider?: import('../openai/answerProvider.js').AnswerProvider,
  *   provider?: import('../openai/createAnswerProvider.js').AnswerProviderName,
+ *   protectedAccess?: boolean,
  * }} options
  * @returns {Promise<CampgroundSummaryResult>}
  */
@@ -200,6 +201,7 @@ export async function generateCampgroundSummary({
   maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS,
   answerProvider,
   provider,
+  protectedAccess = false,
 } = {}) {
   const trimmedCampgroundId = (campgroundId ?? '').trim()
 
@@ -223,7 +225,10 @@ export async function generateCampgroundSummary({
     results,
   })
 
-  const providerInstance = answerProvider ?? createAnswerProvider({ provider })
+  const providerInstance = answerProvider ?? createAnswerProvider({
+    provider,
+    protectedAccess,
+  })
 
   const generationResult = await providerInstance.generateAnswer({
     instructions: buildCampgroundSummaryInstructions(

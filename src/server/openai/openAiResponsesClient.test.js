@@ -192,4 +192,45 @@ describe('createOpenAiAnswerProvider', () => {
 
     expect(fetchImpl).not.toHaveBeenCalled()
   })
+
+  it('truncates oversized input before calling OpenAI', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(createMockFetchResponse({
+      output_text: 'Truncated answer',
+    }))
+
+    const provider = createOpenAiAnswerProvider({
+      apiKey: 'test-key',
+      fetchImpl,
+      defaultMaxOutputTokens: 800,
+    })
+
+    const oversizedInput = 'word '.repeat(5000)
+
+    await provider.generateAnswer({ input: oversizedInput })
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    const requestBody = JSON.parse(fetchImpl.mock.calls[0][1].body)
+    expect(requestBody.input.length).toBeLessThan(oversizedInput.length)
+    expect(requestBody.input.endsWith('…')).toBe(true)
+  })
+
+  it('preserves insufficient_quota details from OpenAI HTTP errors', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(createMockFetchResponse(
+      { error: { message: 'You exceeded your current quota.', code: 'insufficient_quota' } },
+      { ok: false, status: 429 },
+    ))
+
+    const provider = createOpenAiAnswerProvider({
+      apiKey: 'test-key',
+      fetchImpl,
+    })
+
+    await expect(provider.generateAnswer({ input: 'Question' }))
+      .rejects
+      .toMatchObject({
+        name: 'OpenAiResponseError',
+        status: 429,
+        errorCode: 'insufficient_quota',
+      })
+  })
 })

@@ -1,6 +1,8 @@
 # Fly.io app for https://campscout.terapak.com/
 # Deploy: fly deploy
-# Secrets: fly secrets set OPENAI_ANSWER_PROVIDER=openai OPENAI_API_KEY=... OPENAI_MODEL=gpt-4o-mini
+# Secrets:
+#   fly secrets set CAMP_SCOUT_API_TOKEN=...
+#   fly secrets set OPENAI_ANSWER_PROVIDER=openai OPENAI_API_KEY=... OPENAI_MODEL=gpt-4o-mini
 
 app = 'campscout'
 primary_region = 'ord'

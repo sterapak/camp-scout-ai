@@ -25,6 +25,7 @@ describe('createAnswerProvider', () => {
   it('selects the OpenAI provider when configured', () => {
     const provider = createAnswerProvider({
       provider: 'openai',
+      protectedAccess: true,
       apiKey: 'test-key',
       fetchImpl: jest.fn().mockResolvedValue({
         ok: true,
@@ -40,6 +41,7 @@ describe('createAnswerProvider', () => {
     process.env.OPENAI_ANSWER_PROVIDER = 'openai'
 
     const provider = createAnswerProvider({
+      protectedAccess: true,
       apiKey: 'test-key',
       fetchImpl: jest.fn().mockResolvedValue({
         ok: true,
@@ -59,11 +61,40 @@ describe('createAnswerProvider', () => {
     expect(provider.name).toBe('fake')
   })
 
+  it('does not call OpenAI when OPENAI_ANSWER_PROVIDER is fake', async () => {
+    process.env.OPENAI_ANSWER_PROVIDER = 'fake'
+    process.env.OPENAI_API_KEY = 'sk-test-key-should-not-be-used'
+
+    const fetchImpl = jest.fn()
+    const provider = createAnswerProvider({ fetchImpl })
+
+    expect(provider.name).toBe('fake')
+
+    const result = await provider.generateAnswer({ input: 'What are the quiet hours?' })
+
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(result.text).toContain('Fake provider answer for:')
+
+    delete process.env.OPENAI_API_KEY
+  })
+
   it('resolves provider names safely', () => {
     expect(resolveAnswerProviderName(undefined)).toBe('fake')
     expect(resolveAnswerProviderName('fake')).toBe('fake')
-    expect(resolveAnswerProviderName('openai')).toBe('openai')
+    expect(resolveAnswerProviderName('openai')).toBe('fake')
+    expect(resolveAnswerProviderName('openai', { protectedAccess: true })).toBe('openai')
     expect(resolveAnswerProviderName('unknown')).toBe('fake')
+  })
+
+  it('does not enable OpenAI without protected access even when env is openai', () => {
+    process.env.OPENAI_ANSWER_PROVIDER = 'openai'
+
+    const provider = createAnswerProvider({
+      apiKey: 'test-key',
+      fetchImpl: jest.fn(),
+    })
+
+    expect(provider.name).toBe('fake')
   })
 })
 
