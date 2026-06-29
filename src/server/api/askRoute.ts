@@ -26,6 +26,7 @@ import type { AnswerProviderName } from '../openai/createAnswerProvider.js'
 import {
   checkRouteRateLimit,
   resolveClientIp,
+  resolveConfiguredApiToken,
   resolveProtectedAnswerProvider,
   validateApiAccess,
   type ApiAccessFailure,
@@ -40,6 +41,7 @@ import {
 export const ASK_ROUTE_PATH = '/api/ask'
 export const SUMMARY_ROUTE_PATH = '/api/summary'
 export const HEALTH_ROUTE_PATH = '/health'
+export const RUNTIME_CONFIG_PATH = '/camp-scout-runtime.js'
 export const METRICS_ROUTE_PATH = '/metrics'
 export const AI_DASHBOARD_ROUTE_PATH = '/api/ai/dashboard'
 export const AI_AUDIT_ROUTE_PATH = '/api/ai/audit'
@@ -122,6 +124,15 @@ export function sendJsonResponse(
     : body
 
   res.end(JSON.stringify(payload))
+}
+
+export function sendRuntimeConfigScript(res: ServerResponse): void {
+  const token = resolveConfiguredApiToken() ?? ''
+
+  res.statusCode = 200
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8')
+  res.setHeader('Cache-Control', 'no-store')
+  res.end(`window.__CAMP_SCOUT_RUNTIME__=${JSON.stringify({ apiToken: token })};`)
 }
 
 function parseOptionalQueryInt(value: string | null): number | undefined {
@@ -242,6 +253,17 @@ export function createAskRouteMiddleware(options: AskRouteMiddlewareOptions = {}
       }
 
       sendJsonResponse(res, 200, { status: 'ok' }, { correlationId })
+      return
+    }
+
+    if (pathname === RUNTIME_CONFIG_PATH) {
+      if (req.method !== 'GET') {
+        res.setHeader('Allow', 'GET')
+        sendJsonResponse(res, 405, { error: 'Method not allowed. Use GET.' }, { correlationId })
+        return
+      }
+
+      sendRuntimeConfigScript(res)
       return
     }
 

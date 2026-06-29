@@ -3,10 +3,12 @@ import { AskApiError, postAsk } from './askClient'
 describe('postAsk', () => {
   beforeEach(() => {
     global.fetch = jest.fn()
+    window.__CAMP_SCOUT_RUNTIME__ = { apiToken: 'test-api-token' }
   })
 
   afterEach(() => {
     jest.resetAllMocks()
+    delete window.__CAMP_SCOUT_RUNTIME__
   })
 
   it('posts question and campgroundId to /api/ask', async () => {
@@ -27,7 +29,10 @@ describe('postAsk', () => {
 
     expect(global.fetch).toHaveBeenCalledWith('/api/ask', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer test-api-token',
+      },
       body: JSON.stringify({
         question: 'What are the bear rules?',
         campgroundId: 'yosemite-upper-pines',
@@ -52,7 +57,10 @@ describe('postAsk', () => {
 
     expect(global.fetch).toHaveBeenCalledWith('/api/ask', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer test-api-token',
+      },
       body: JSON.stringify({ question: 'What are the bear rules?' }),
     })
   })
