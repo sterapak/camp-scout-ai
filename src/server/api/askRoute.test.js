@@ -11,6 +11,7 @@ import {
 import {
   ASK_ROUTE_PATH,
   HEALTH_ROUTE_PATH,
+  RUNTIME_CONFIG_PATH,
   SUMMARY_ROUTE_PATH,
   createAskRouteMiddleware,
   readJsonRequestBody,
@@ -112,6 +113,24 @@ describe('createAskRouteMiddleware', () => {
     expect(payload.status).toBe(SUCCESS_STATUS)
     expect(payload.answer).toContain('Fake provider answer for:')
     expect(payload.citations.length).toBeGreaterThan(0)
+  })
+
+  it('serves the browser runtime config script', async () => {
+    const middleware = createAskRouteMiddleware({ answerProvider: fakeAnswerProvider })
+    const req = createMockRequest({
+      method: 'GET',
+      url: RUNTIME_CONFIG_PATH,
+      body: null,
+    })
+    const { res, state } = createMockResponse()
+
+    await middleware(req, res, jest.fn())
+
+    expect(state.statusCode).toBe(200)
+    expect(state.headers['content-type']).toBe('application/javascript; charset=utf-8')
+    expect(state.body).toBe(
+      'window.__CAMP_SCOUT_RUNTIME__={"apiToken":"test-api-token"};'
+    )
   })
 
   it('blocks unauthenticated access to /api/ask', async () => {

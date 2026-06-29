@@ -1,3 +1,5 @@
+import { buildApiRequestHeaders } from './apiAuth.js'
+
 export const SUMMARY_API_PATH = '/api/summary'
 
 export class SummaryApiError extends Error {
@@ -32,7 +34,7 @@ export class SummaryApiError extends Error {
 export async function postSummary({ campgroundId }) {
   const response = await fetch(SUMMARY_API_PATH, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: buildApiRequestHeaders(),
     body: JSON.stringify({ campgroundId: campgroundId.trim() }),
   })
 

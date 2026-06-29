@@ -1,3 +1,5 @@
+import { buildApiRequestHeaders } from './apiAuth.js'
+
 export const ASK_API_PATH = '/api/ask'
 
 export class AskApiError extends Error {
@@ -43,7 +45,7 @@ export async function postAsk({ question, campgroundId }) {
 
   const response = await fetch(ASK_API_PATH, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: buildApiRequestHeaders(),
     body: JSON.stringify(body),
   })
 

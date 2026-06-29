@@ -6,6 +6,7 @@
 import {
   checkRouteRateLimit,
   resolveClientIp,
+  resolveConfiguredApiToken,
   resolveProtectedAnswerProvider,
   validateApiAccess,
 } from './apiProtection.js'
@@ -19,6 +20,7 @@ import {
 export const ASK_ROUTE_PATH = '/api/ask'
 export const SUMMARY_ROUTE_PATH = '/api/summary'
 export const HEALTH_ROUTE_PATH = '/health'
+export const RUNTIME_CONFIG_PATH = '/camp-scout-runtime.js'
 
 const PROTECTED_ROUTE_PATHS = new Set([ASK_ROUTE_PATH, SUMMARY_ROUTE_PATH])
 
@@ -81,6 +83,18 @@ export function sendJsonResponse(res, statusCode, body) {
 }
 
 /**
+ * @param {import('http').ServerResponse} res
+ */
+export function sendRuntimeConfigScript(res) {
+  const token = resolveConfiguredApiToken() ?? ''
+
+  res.statusCode = 200
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8')
+  res.setHeader('Cache-Control', 'no-store')
+  res.end(`window.__CAMP_SCOUT_RUNTIME__=${JSON.stringify({ apiToken: token })};`)
+}
+
+/**
  * Creates Connect-compatible middleware for Camp Scout AI API routes.
  * @param {{
  *   answerProvider?: import('../openai/answerProvider.js').AnswerProvider,
@@ -102,6 +116,17 @@ export function createAskRouteMiddleware(options = {}) {
       }
 
       sendJsonResponse(res, 200, { status: 'ok' })
+      return
+    }
+
+    if (pathname === RUNTIME_CONFIG_PATH) {
+      if (req.method !== 'GET') {
+        res.setHeader('Allow', 'GET')
+        sendJsonResponse(res, 405, { error: 'Method not allowed. Use GET.' })
+        return
+      }
+
+      sendRuntimeConfigScript(res)
       return
     }
 
