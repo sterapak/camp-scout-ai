@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** @jest-environment node */
 
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'

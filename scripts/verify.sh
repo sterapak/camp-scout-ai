@@ -80,6 +80,9 @@ echo "Camp Scout AI — Project Verification"
 echo "Project root: $ROOT"
 echo ""
 
+# --- Typecheck ---
+run_if_available "typecheck" "Typecheck"
+
 # --- Lint ---
 run_if_available "lint" "Lint"
 

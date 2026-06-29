@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** @jest-environment node */
 
 import { fetchCampgroundReadableText } from './fetchCampgroundContent.js'

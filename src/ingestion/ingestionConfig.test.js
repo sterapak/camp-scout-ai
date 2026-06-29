@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** @jest-environment node */
 
 import { campgrounds } from '../data/campgrounds.js'

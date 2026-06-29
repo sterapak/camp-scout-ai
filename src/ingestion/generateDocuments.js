@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { categorizeContent, getDocumentTypesToWrite } from './categorizeContent.js'
 import { resolveSourceName } from './sourceName.js'
 

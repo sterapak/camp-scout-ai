@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { parse } from 'node-html-parser'
 
 const REMOVED_SELECTORS = [

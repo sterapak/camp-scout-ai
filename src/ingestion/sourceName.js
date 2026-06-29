@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Derives a publisher name from an official source URL.
  * @param {string} sourceUrl

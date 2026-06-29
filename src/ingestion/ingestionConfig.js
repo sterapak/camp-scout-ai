@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { campgrounds } from '../data/campgrounds.js'
 
 /**

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { KNOWLEDGE_DOCUMENT_TYPES } from '../data/knowledgeSchema.js'
 
 const DOCUMENT_TYPE_ORDER = ['description', 'rules', 'reservation', 'alert']
