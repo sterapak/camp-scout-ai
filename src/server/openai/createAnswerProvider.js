@@ -3,6 +3,8 @@
  * Defaults to the fake provider so tests and local runs stay free of paid API calls.
  */
 
+import { isAiEnabled } from '../ai/aiConfig.js'
+import { logAiDisabled } from '../ai/aiRequestLogger.js'
 import { createFakeAnswerProvider } from './fakeAnswerProvider.js'
 import { logOpenAiDiagnostic } from './logOpenAiDiagnostic.js'
 import { createOpenAiAnswerProvider } from './openAiResponsesClient.js'
@@ -21,6 +23,11 @@ export const ANSWER_PROVIDER_ENV = 'OPENAI_ANSWER_PROVIDER'
  */
 export function resolveAnswerProviderName(explicitProvider, options = {}) {
   if (!options.protectedAccess) {
+    return 'fake'
+  }
+
+  if (!isAiEnabled()) {
+    logAiDisabled('resolveAnswerProviderName')
     return 'fake'
   }
 

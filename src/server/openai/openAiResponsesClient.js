@@ -50,16 +50,23 @@ export function resolveOpenAiBaseUrl(explicitBaseUrl) {
  * @returns {Promise<Record<string, unknown>>}
  */
 export async function readJsonResponseBody(response) {
+  if (typeof response.json === 'function') {
+    try {
+      const payload = await response.json()
+      if (payload && typeof payload === 'object') {
+        return payload
+      }
+    } catch {
+      // Fall back to text parsing below.
+    }
+  }
+
   if (typeof response.text === 'function') {
     const rawText = await response.text()
     if (typeof rawText !== 'string' || rawText.trim().length === 0) {
       throw new Error('Empty response body')
     }
     return JSON.parse(rawText)
-  }
-
-  if (typeof response.json === 'function') {
-    return response.json()
   }
 
   throw new Error('Response body is not readable')
@@ -162,10 +169,7 @@ export function createOpenAiAnswerProvider(options = {}) {
         body: JSON.stringify(body),
       })
 
-      let payload
-      try {
-        payload = await readJsonResponseBody(response)
-      } catch {
+      const payload = await readJsonResponseBody(response).catch(() => {
         logOpenAiDiagnostic('generateAnswer.nonJsonResponse', {
           provider: 'openai',
           model,
@@ -175,7 +179,7 @@ export function createOpenAiAnswerProvider(options = {}) {
         throw new OpenAiResponseError('OpenAI returned a non-JSON response.', {
           status: response.status,
         })
-      }
+      })
 
       if (!response.ok) {
         const message = typeof payload?.error?.message === 'string'

@@ -23,6 +23,7 @@ describe('apiProtection', () => {
     resetRateLimitState()
     process.env[CAMP_SCOUT_API_TOKEN_ENV] = 'test-api-token'
     process.env.OPENAI_ANSWER_PROVIDER = 'openai'
+    process.env.AI_ENABLED = 'true'
   })
 
   afterEach(() => {
@@ -39,6 +40,8 @@ describe('apiProtection', () => {
     } else {
       process.env.OPENAI_ANSWER_PROVIDER = originalProvider
     }
+
+    delete process.env.AI_ENABLED
   })
 
   it('detects whether API access is configured', () => {
@@ -115,10 +118,17 @@ describe('apiProtection', () => {
   })
 
   it('keeps OpenAI disabled until protected access is validated', () => {
+    process.env.AI_ENABLED = 'true'
     process.env.OPENAI_ANSWER_PROVIDER = 'openai'
     expect(resolveProtectedAnswerProvider()).toBe('openai')
 
     process.env.OPENAI_ANSWER_PROVIDER = 'fake'
+    expect(resolveProtectedAnswerProvider()).toBe('fake')
+  })
+
+  it('keeps OpenAI disabled when AI_ENABLED is false even with openai configured', () => {
+    process.env.AI_ENABLED = 'false'
+    process.env.OPENAI_ANSWER_PROVIDER = 'openai'
     expect(resolveProtectedAnswerProvider()).toBe('fake')
   })
 })
