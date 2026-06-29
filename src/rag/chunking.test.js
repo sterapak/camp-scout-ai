@@ -11,7 +11,7 @@ import {
   splitDocumentContent,
 } from './chunking'
 
-const CHUNKING_SOURCE = fs.readFileSync(path.join(__dirname, 'chunking.js'), 'utf8')
+const CHUNKING_SOURCE = fs.readFileSync(path.join(__dirname, 'chunking.ts'), 'utf8')
 
 describe('chunking module', () => {
   const validDocument = {

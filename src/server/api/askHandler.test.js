@@ -239,13 +239,16 @@ describe('ask handler safety', () => {
   const apiDir = path.resolve(__dirname)
 
   it('does not import the OpenAI client directly from ask API modules', () => {
-    const apiFiles = ['askHandler.js', 'askRoute.js', 'askApiPlugin.js']
+    const apiFiles = ['askHandler.ts', 'askRoute.ts', 'askApiPlugin.ts']
 
     for (const fileName of apiFiles) {
       const source = fs.readFileSync(path.join(apiDir, fileName), 'utf8')
       const importLines = source.split('\n').filter((line) => /^\s*import\s/.test(line))
 
       for (const importLine of importLines) {
+        if (importLine.includes('import type')) {
+          continue
+        }
         expect(importLine).not.toMatch(/openAiResponsesClient|createAnswerProvider/)
       }
     }

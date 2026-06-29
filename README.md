@@ -43,8 +43,29 @@ The app runs at [http://localhost:5173](http://localhost:5173).
 
 ```bash
 npm test
+npm run typecheck   # TypeScript type checking (no emit)
 npm run cypress:run   # requires dev server running
 ```
+
+## TypeScript Workflow
+
+Camp Scout uses an incremental TypeScript migration. JavaScript files remain during the transition; new and migrated modules use `.ts`/`.tsx`.
+
+| Command | Purpose |
+|---------|---------|
+| `npm run typecheck` | Run `tsc --noEmit` against `src/` |
+| `npm test` | Jest unit tests with coverage |
+| `npm run build` | Vite production build |
+
+Shared API contracts live in `src/shared/types/api.ts` (Ask/Summary request and response types, citations, evidence, grounding metrics).
+
+Stricter compiler options are tracked in `docs/TYPESCRIPT_STRICTNESS_TODO.md` — each tightening is intended as its own PR.
+
+Configuration (`tsconfig.json`):
+
+- `allowJs: true` — existing `.js`/`.jsx` files stay checkable during migration
+- `checkJs: true` — surface type issues in JavaScript without renaming files first
+- `noEmit: true` — type-check only; Vite handles bundling
 
 ## Project Verification
 
@@ -56,10 +77,11 @@ Run all available quality checks and a production build with one command:
 
 The script detects available npm scripts from `package.json` and runs, in order:
 
-1. **Lint** — `npm run lint` (if defined)
-2. **Unit tests** — `npm run test:unit`, `unit`, or `test` (first found)
-3. **Coverage** — separate `coverage`, `test:coverage`, or `test:ci` script if defined; otherwise notes when `test` already includes coverage
-4. **Production build** — `npm run build` (required)
+1. **Typecheck** — `npm run typecheck` (if defined)
+2. **Lint** — `npm run lint` (if defined)
+3. **Unit tests** — `npm run test:unit`, `unit`, or `test` (first found)
+4. **Coverage** — separate `coverage`, `test:coverage`, or `test:ci` script if defined; otherwise notes when `test` already includes coverage
+5. **Production build** — `npm run build` (required)
 
 Behavior:
 
@@ -98,6 +120,7 @@ See `docs/TEMPLATE_INVENTORY.md` for the full routing and component inventory.
 ## Built With
 
 - [React](https://react.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
 - [Vite](https://vitejs.dev/)
 - [Tailwind CSS](https://tailwindcss.com/)
 - [React Router](https://reactrouter.com/)

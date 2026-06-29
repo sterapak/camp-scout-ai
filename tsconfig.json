@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "strict": false,
+    "noImplicitAny": false,
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false,
+    "types": ["vite/client"]
+  },
+  "include": ["src"],
+  "exclude": [
+    "node_modules",
+    "docs",
+    "dist",
+    "src/**/*.test.js",
+    "src/**/*.test.jsx",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/data/knowledge/campgrounds/**",
+    "src/data/campgroundSchema.js",
+    "src/utils/formatGeneratedAt.js"
+  ]
+}

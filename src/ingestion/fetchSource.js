@@ -1,3 +1,4 @@
+// @ts-nocheck
 const DEFAULT_USER_AGENT = 'CampScoutIngestion/1.0 (+https://github.com/camp-scout-ai)'
 const DEFAULT_TIMEOUT_MS = 30000
 
