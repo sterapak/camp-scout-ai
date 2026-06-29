@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { extractReadableText } from './extractContent.js'
 import { fetchSource } from './fetchSource.js'
 import { hasConfiguredSources } from '../data/campgroundSources.js'

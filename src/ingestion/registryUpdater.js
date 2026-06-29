@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { KNOWLEDGE_DOCUMENT_TYPES } from '../data/knowledgeSchema.js'

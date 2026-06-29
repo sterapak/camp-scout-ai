@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Campground seed schema for Camp Scout AI.
  *

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Escapes content for use inside a JS template literal.
  * @param {string} content

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Formats ISO timestamps for user-facing "Generated on" labels.
  */

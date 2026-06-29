@@ -11,6 +11,7 @@
     "start": "node server/production.mjs",
     "lint": "eslint src --ext .js --ext .jsx",
     "lint:fix": "eslint src --ext .js --ext .jsx --fix",
+    "typecheck": "tsc --noEmit",
     "test": "jest --coverage",
     "ingest:campgrounds": "node scripts/ingest-campgrounds.mjs",
     "cypress:open": "cypress open",
@@ -29,9 +30,14 @@
   "devDependencies": {
     "@babel/preset-env": "^7.27.2",
     "@babel/preset-react": "^7.27.1",
+    "@babel/preset-typescript": "^7.29.7",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.0.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.34.1",
     "@typescript-eslint/parser": "^8.34.1",
     "@vitejs/plugin-react": "^4.5.2",
@@ -48,6 +54,7 @@
     "node-html-parser": "^7.0.1",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.3.0",
+    "typescript": "^5.8.3",
     "vite": "^5.4.19"
   }
 }

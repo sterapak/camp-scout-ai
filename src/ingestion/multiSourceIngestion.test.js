@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** @jest-environment node */
 
 import { readFileSync } from 'node:fs'
