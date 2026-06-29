@@ -81,16 +81,23 @@ export function resolveOpenAiBaseUrl(explicitBaseUrl?: string): string {
 }
 
 export async function readJsonResponseBody(response: FetchLikeResponse): Promise<OpenAiResponsePayload> {
+  if (typeof response.json === 'function') {
+    try {
+      const payload = await response.json()
+      if (payload && typeof payload === 'object') {
+        return payload as OpenAiResponsePayload
+      }
+    } catch {
+      // Fall back to text parsing below.
+    }
+  }
+
   if (typeof response.text === 'function') {
     const rawText = await response.text()
     if (typeof rawText !== 'string' || rawText.trim().length === 0) {
       throw new Error('Empty response body')
     }
     return JSON.parse(rawText) as OpenAiResponsePayload
-  }
-
-  if (typeof response.json === 'function') {
-    return (await response.json()) as OpenAiResponsePayload
   }
 
   throw new Error('Response body is not readable')
@@ -177,10 +184,7 @@ export function createOpenAiAnswerProvider(options: OpenAiAnswerProviderOptions 
         body: JSON.stringify(body),
       }) as FetchLikeResponse
 
-      let payload: OpenAiResponsePayload
-      try {
-        payload = await readJsonResponseBody(response)
-      } catch {
+      const payload = await readJsonResponseBody(response).catch(() => {
         logOpenAiDiagnostic('generateAnswer.nonJsonResponse', {
           provider: 'openai',
           model,
@@ -190,7 +194,7 @@ export function createOpenAiAnswerProvider(options: OpenAiAnswerProviderOptions 
         throw new OpenAiResponseError('OpenAI returned a non-JSON response.', {
           status: response.status,
         })
-      }
+      })
 
       if (!response.ok) {
         const message = typeof payload?.error?.message === 'string'

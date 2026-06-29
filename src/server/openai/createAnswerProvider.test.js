@@ -7,12 +7,23 @@ import { fakeAnswerProvider } from './fakeAnswerProvider.js'
 
 describe('createAnswerProvider', () => {
   const originalProvider = process.env.OPENAI_ANSWER_PROVIDER
+  const originalAiEnabled = process.env.AI_ENABLED
+
+  beforeEach(() => {
+    process.env.AI_ENABLED = 'true'
+  })
 
   afterEach(() => {
     if (originalProvider === undefined) {
       delete process.env.OPENAI_ANSWER_PROVIDER
     } else {
       process.env.OPENAI_ANSWER_PROVIDER = originalProvider
+    }
+
+    if (originalAiEnabled === undefined) {
+      delete process.env.AI_ENABLED
+    } else {
+      process.env.AI_ENABLED = originalAiEnabled
     }
   })
 
@@ -95,6 +106,22 @@ describe('createAnswerProvider', () => {
     })
 
     expect(provider.name).toBe('fake')
+  })
+
+  it('does not enable OpenAI when AI_ENABLED is false even with protected access', () => {
+    process.env.OPENAI_ANSWER_PROVIDER = 'openai'
+    process.env.AI_ENABLED = 'false'
+
+    const provider = createAnswerProvider({
+      provider: 'openai',
+      protectedAccess: true,
+      apiKey: 'test-key',
+      fetchImpl: jest.fn(),
+    })
+
+    expect(provider.name).toBe('fake')
+
+    delete process.env.AI_ENABLED
   })
 })
 

@@ -113,6 +113,51 @@ fly secrets set OPENAI_ANSWER_PROVIDER=openai OPENAI_API_KEY=sk-... OPENAI_MODEL
 
 Health check: `GET /health` returns `{"status":"ok"}`.
 
+## AI Operations
+
+Camp Scout AI includes production operational controls for cost management, observability, and safety. See `docs/AI_OPERATIONS_RUNBOOK.md` for full procedures.
+
+### Global Kill Switch
+
+Set `AI_ENABLED=false` (default) to disable all OpenAI traffic. The fake provider is used automatically and no network requests are sent to OpenAI.
+
+```bash
+# Disable OpenAI immediately (default)
+AI_ENABLED=false
+
+# Enable OpenAI (requires OPENAI_ANSWER_PROVIDER=openai and OPENAI_API_KEY)
+AI_ENABLED=true
+```
+
+### Budget Limits
+
+Configure daily and hourly limits via environment variables. When exceeded, AI endpoints return HTTP 503 and budget events are logged.
+
+| Variable | Purpose |
+|----------|---------|
+| `AI_DAILY_REQUEST_LIMIT` | Max requests per UTC day |
+| `AI_DAILY_INPUT_TOKEN_LIMIT` | Max input tokens per day |
+| `AI_DAILY_OUTPUT_TOKEN_LIMIT` | Max output tokens per day |
+| `AI_DAILY_DOLLAR_LIMIT` | Max estimated spend per day |
+| `AI_HOURLY_REQUEST_LIMIT` | Max requests per UTC hour |
+| `AI_HOURLY_TOKEN_LIMIT` | Max tokens per hour |
+| `AI_HOURLY_DOLLAR_LIMIT` | Max estimated spend per hour |
+
+### Internal Endpoints
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `GET /metrics` | None | Prometheus-compatible AI metrics |
+| `GET /api/ai/dashboard` | API token | Spend dashboard and endpoint monitoring |
+| `GET /api/ai/audit?limit=N` | API token | Recent AI audit log entries |
+| `GET /api/ai/reconciliation` | API token | Cost reconciliation report |
+
+All responses include an `x-correlation-id` header for end-to-end request tracing.
+
+### Maintenance Mode
+
+Set `AI_MAINTENANCE_MODE=true` to return HTTP 503 on AI endpoints. The health check at `/health` is unaffected.
+
 ## Project Structure
 
 See `docs/TEMPLATE_INVENTORY.md` for the full routing and component inventory.

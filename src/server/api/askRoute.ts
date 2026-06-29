@@ -5,6 +5,24 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
+import { buildAiDashboard } from '../ai/aiDashboard.js'
+import { queryRecentAuditLog } from '../ai/aiAuditLog.js'
+import { renderPrometheusMetrics } from '../ai/aiMetrics.js'
+import {
+  generateReconciliationReport,
+  reconciliationReportToCsv,
+} from '../ai/aiReconciliation.js'
+import {
+  checkAiEndpointAccess,
+  extractTokenMetricsFromResponse,
+  finalizeAiRequest,
+  resolveAuthenticatedUser,
+  resolveCorrelationId,
+  resolveEffectiveProvider,
+  setCorrelationIdHeader,
+} from '../ai/aiOperations.js'
+import type { AnswerProvider } from '../openai/answerProvider.js'
+import type { AnswerProviderName } from '../openai/createAnswerProvider.js'
 import {
   checkRouteRateLimit,
   resolveClientIp,
@@ -18,14 +36,21 @@ import {
   JsonBodyTooLargeError,
   resolveMaxJsonBodyBytes,
 } from './requestGuardrails.js'
-import type { AnswerProvider } from '../openai/answerProvider.js'
-import type { AnswerProviderName } from '../openai/createAnswerProvider.js'
 
 export const ASK_ROUTE_PATH = '/api/ask'
 export const SUMMARY_ROUTE_PATH = '/api/summary'
 export const HEALTH_ROUTE_PATH = '/health'
+export const METRICS_ROUTE_PATH = '/metrics'
+export const AI_DASHBOARD_ROUTE_PATH = '/api/ai/dashboard'
+export const AI_AUDIT_ROUTE_PATH = '/api/ai/audit'
+export const AI_RECONCILIATION_ROUTE_PATH = '/api/ai/reconciliation'
 
 const PROTECTED_ROUTE_PATHS = new Set([ASK_ROUTE_PATH, SUMMARY_ROUTE_PATH])
+const AI_OPS_ROUTE_PATHS = new Set([
+  AI_DASHBOARD_ROUTE_PATH,
+  AI_AUDIT_ROUTE_PATH,
+  AI_RECONCILIATION_ROUTE_PATH,
+])
 
 export interface AskRouteMiddlewareOptions {
   answerProvider?: AnswerProvider
@@ -33,6 +58,11 @@ export interface AskRouteMiddlewareOptions {
   reloadOpenAiEnv?: () => void
   skipApiProtection?: boolean
   protectedAccess?: boolean
+  persistAudit?: boolean
+}
+
+interface SendJsonResponseOptions {
+  correlationId?: string
 }
 
 export function readJsonRequestBody(req: IncomingMessage, options: { maxBytes?: number } = {}): Promise<unknown> {
@@ -74,24 +104,144 @@ export function readJsonRequestBody(req: IncomingMessage, options: { maxBytes?: 
   })
 }
 
-export function sendJsonResponse(res: ServerResponse, statusCode: number, body: unknown): void {
+export function sendJsonResponse(
+  res: ServerResponse,
+  statusCode: number,
+  body: unknown,
+  options: SendJsonResponseOptions = {},
+): void {
   res.statusCode = statusCode
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
-  res.end(JSON.stringify(body))
+
+  if (options.correlationId) {
+    setCorrelationIdHeader(res, options.correlationId)
+  }
+
+  const payload = options.correlationId && body && typeof body === 'object' && !Array.isArray(body)
+    ? { ...body as Record<string, unknown>, correlationId: options.correlationId }
+    : body
+
+  res.end(JSON.stringify(payload))
+}
+
+function parseOptionalQueryInt(value: string | null): number | undefined {
+  if (value === null || value === '') {
+    return undefined
+  }
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function parseOptionalQueryFloat(value: string | null): number | undefined {
+  if (value === null || value === '') {
+    return undefined
+  }
+  const parsed = Number.parseFloat(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function handleOpsRoutes(req: IncomingMessage, res: ServerResponse, correlationId: string): boolean {
+  const pathname = req.url?.split('?')[0] ?? ''
+
+  if (pathname === METRICS_ROUTE_PATH) {
+    if (req.method !== 'GET') {
+      res.setHeader('Allow', 'GET')
+      sendJsonResponse(res, 405, { error: 'Method not allowed. Use GET.' }, { correlationId })
+      return true
+    }
+
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
+    setCorrelationIdHeader(res, correlationId)
+    res.end(renderPrometheusMetrics())
+    return true
+  }
+
+  if (!AI_OPS_ROUTE_PATHS.has(pathname)) {
+    return false
+  }
+
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET')
+    sendJsonResponse(res, 405, { error: 'Method not allowed. Use GET.' }, { correlationId })
+    return true
+  }
+
+  const access = validateApiAccess(req)
+  if (!access.ok) {
+    const failure = access as ApiAccessFailure
+    sendJsonResponse(res, failure.statusCode, failure.body, { correlationId })
+    finalizeAiRequest({
+      endpoint: pathname,
+      correlationId,
+      provider: 'none',
+      latencyMs: 0,
+      clientIp: resolveClientIp(req),
+      authenticatedUser: resolveAuthenticatedUser(req),
+      responseStatus: failure.statusCode,
+      persistAudit: false,
+    })
+    return true
+  }
+
+  if (pathname === AI_DASHBOARD_ROUTE_PATH) {
+    sendJsonResponse(res, 200, buildAiDashboard(), { correlationId })
+    return true
+  }
+
+  if (pathname === AI_AUDIT_ROUTE_PATH) {
+    const url = new URL(req.url ?? '', 'http://localhost')
+    const limit = Number.parseInt(url.searchParams.get('limit') ?? '50', 10)
+    sendJsonResponse(res, 200, {
+      entries: queryRecentAuditLog(Number.isFinite(limit) ? limit : 50),
+    }, { correlationId })
+    return true
+  }
+
+  if (pathname === AI_RECONCILIATION_ROUTE_PATH) {
+    const url = new URL(req.url ?? '', 'http://localhost')
+    const format = url.searchParams.get('format')
+    const report = generateReconciliationReport({
+      openAiReportedRequests: parseOptionalQueryInt(url.searchParams.get('openaiRequests')),
+      openAiReportedInputTokens: parseOptionalQueryInt(url.searchParams.get('openaiInputTokens')),
+      openAiReportedOutputTokens: parseOptionalQueryInt(url.searchParams.get('openaiOutputTokens')),
+      openAiReportedCostUsd: parseOptionalQueryFloat(url.searchParams.get('openaiCostUsd')),
+    })
+
+    if (format === 'csv') {
+      res.statusCode = 200
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+      setCorrelationIdHeader(res, correlationId)
+      res.end(reconciliationReportToCsv(report))
+      return true
+    }
+
+    sendJsonResponse(res, 200, report, { correlationId })
+    return true
+  }
+
+  return false
 }
 
 export function createAskRouteMiddleware(options: AskRouteMiddlewareOptions = {}) {
   return async function apiRouteMiddleware(req: IncomingMessage, res: ServerResponse, next: () => void): Promise<void> {
     const pathname = req.url?.split('?')[0] ?? ''
+    const correlationId = resolveCorrelationId(req)
+    const startedAt = Date.now()
+    const clientIp = resolveClientIp(req)
+
+    if (handleOpsRoutes(req, res, correlationId)) {
+      return
+    }
 
     if (pathname === HEALTH_ROUTE_PATH) {
       if (req.method !== 'GET') {
         res.setHeader('Allow', 'GET')
-        sendJsonResponse(res, 405, { error: 'Method not allowed. Use GET.' })
+        sendJsonResponse(res, 405, { error: 'Method not allowed. Use GET.' }, { correlationId })
         return
       }
 
-      sendJsonResponse(res, 200, { status: 'ok' })
+      sendJsonResponse(res, 200, { status: 'ok' }, { correlationId })
       return
     }
 
@@ -102,7 +252,7 @@ export function createAskRouteMiddleware(options: AskRouteMiddlewareOptions = {}
 
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'POST')
-      sendJsonResponse(res, 405, { error: 'Method not allowed. Use POST.' })
+      sendJsonResponse(res, 405, { error: 'Method not allowed. Use POST.' }, { correlationId })
       return
     }
 
@@ -110,17 +260,63 @@ export function createAskRouteMiddleware(options: AskRouteMiddlewareOptions = {}
       const access = validateApiAccess(req)
       if (!access.ok) {
         const failure = access as ApiAccessFailure
-        sendJsonResponse(res, failure.statusCode, failure.body)
+        sendJsonResponse(res, failure.statusCode, failure.body, { correlationId })
+        finalizeAiRequest({
+          endpoint: pathname,
+          correlationId,
+          provider: 'none',
+          latencyMs: Date.now() - startedAt,
+          clientIp,
+          authenticatedUser: resolveAuthenticatedUser(req),
+          responseStatus: failure.statusCode,
+        })
         return
       }
 
-      const clientIp = resolveClientIp(req)
       const rateLimit = checkRouteRateLimit(pathname, clientIp)
       if (!rateLimit.ok) {
         const rateLimitFailure = rateLimit as ApiAccessFailure
-        sendJsonResponse(res, rateLimitFailure.statusCode, rateLimitFailure.body)
+        sendJsonResponse(res, rateLimitFailure.statusCode, rateLimitFailure.body, { correlationId })
+        finalizeAiRequest({
+          endpoint: pathname,
+          correlationId,
+          provider: 'none',
+          latencyMs: Date.now() - startedAt,
+          clientIp,
+          authenticatedUser: resolveAuthenticatedUser(req),
+          responseStatus: rateLimitFailure.statusCode,
+        })
         return
       }
+    }
+
+    const configuredProvider = options.skipApiProtection
+      ? (options.provider ?? 'fake')
+      : resolveProtectedAnswerProvider()
+    const effectiveProvider = resolveEffectiveProvider(configuredProvider, {
+      skipKillSwitch: options.skipApiProtection === true,
+    })
+
+    const accessCheck = checkAiEndpointAccess({
+      endpoint: pathname,
+      correlationId,
+      wouldUseOpenAi: effectiveProvider === 'openai',
+      skipMaintenanceCheck: options.skipApiProtection === true,
+      skipBudgetCheck: options.skipApiProtection === true,
+    })
+
+    if (accessCheck.blocked) {
+      sendJsonResponse(res, accessCheck.statusCode, accessCheck.body, { correlationId })
+      finalizeAiRequest({
+        endpoint: pathname,
+        correlationId,
+        provider: 'fake',
+        latencyMs: Date.now() - startedAt,
+        clientIp,
+        authenticatedUser: resolveAuthenticatedUser(req),
+        responseStatus: accessCheck.statusCode,
+      })
+      return
     }
 
     try {
@@ -128,28 +324,70 @@ export function createAskRouteMiddleware(options: AskRouteMiddlewareOptions = {}
       const body = await readJsonRequestBody(req)
       const handlerOptions = {
         ...options,
-        provider: options.skipApiProtection
-          ? options.provider
-          : resolveProtectedAnswerProvider(),
+        provider: effectiveProvider as AnswerProviderName,
         protectedAccess: options.skipApiProtection ? options.protectedAccess === true : true,
       }
       const response =
         pathname === SUMMARY_ROUTE_PATH
           ? await handleSummaryRequest(body, handlerOptions)
           : await handleAskRequest(body, handlerOptions)
-      sendJsonResponse(res, response.statusCode, response.body)
+
+      const tokenMetrics = extractTokenMetricsFromResponse(response.body)
+      sendJsonResponse(res, response.statusCode, response.body, { correlationId })
+
+      finalizeAiRequest({
+        endpoint: pathname,
+        correlationId,
+        model: tokenMetrics.model,
+        provider: effectiveProvider,
+        promptTokenEstimate: tokenMetrics.inputTokens,
+        completionTokens: tokenMetrics.outputTokens,
+        latencyMs: Date.now() - startedAt,
+        clientIp,
+        authenticatedUser: resolveAuthenticatedUser(req),
+        responseStatus: response.statusCode,
+        cacheHit: tokenMetrics.cacheHit,
+        persistAudit: options.persistAudit !== false,
+      })
     } catch (error) {
       if (error instanceof JsonBodyTooLargeError) {
-        sendJsonResponse(res, 413, { error: error.message })
+        sendJsonResponse(res, 413, { error: error.message }, { correlationId })
+        finalizeAiRequest({
+          endpoint: pathname,
+          correlationId,
+          provider: effectiveProvider,
+          latencyMs: Date.now() - startedAt,
+          clientIp,
+          authenticatedUser: resolveAuthenticatedUser(req),
+          responseStatus: 413,
+        })
         return
       }
 
       if (error instanceof SyntaxError) {
-        sendJsonResponse(res, 400, { error: INVALID_JSON_ERROR })
+        sendJsonResponse(res, 400, { error: INVALID_JSON_ERROR }, { correlationId })
+        finalizeAiRequest({
+          endpoint: pathname,
+          correlationId,
+          provider: effectiveProvider,
+          latencyMs: Date.now() - startedAt,
+          clientIp,
+          authenticatedUser: resolveAuthenticatedUser(req),
+          responseStatus: 400,
+        })
         return
       }
 
-      sendJsonResponse(res, 500, { error: 'An unexpected error occurred.' })
+      sendJsonResponse(res, 500, { error: 'An unexpected error occurred.' }, { correlationId })
+      finalizeAiRequest({
+        endpoint: pathname,
+        correlationId,
+        provider: effectiveProvider,
+        latencyMs: Date.now() - startedAt,
+        clientIp,
+        authenticatedUser: resolveAuthenticatedUser(req),
+        responseStatus: 500,
+      })
     }
   }
 }

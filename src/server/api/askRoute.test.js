@@ -11,11 +11,17 @@ import {
 import {
   ASK_ROUTE_PATH,
   HEALTH_ROUTE_PATH,
+  METRICS_ROUTE_PATH,
+  AI_DASHBOARD_ROUTE_PATH,
   SUMMARY_ROUTE_PATH,
   createAskRouteMiddleware,
   readJsonRequestBody,
   sendJsonResponse,
 } from './askRoute.js'
+import { AI_MAINTENANCE_MODE_ENV } from '../ai/aiConfig.js'
+import { resetAiUsageStore } from '../ai/aiUsageStore.js'
+import { resetAuditLog } from '../ai/aiAuditLog.js'
+import { resetAiOperationsState } from '../ai/aiOperations.js'
 import {
   INSUFFICIENT_CONTEXT_STATUS,
   SUCCESS_STATUS,
@@ -88,6 +94,10 @@ describe('readJsonRequestBody', () => {
 describe('createAskRouteMiddleware', () => {
   beforeEach(() => {
     resetRateLimitState()
+    resetAiUsageStore()
+    resetAuditLog('/tmp/camp-scout-ai-test-audit.jsonl')
+    resetAiOperationsState()
+    delete process.env[AI_MAINTENANCE_MODE_ENV]
     process.env[CAMP_SCOUT_API_TOKEN_ENV] = 'test-api-token'
   })
 
@@ -125,7 +135,9 @@ describe('createAskRouteMiddleware', () => {
     await middleware(req, res, jest.fn())
 
     expect(state.statusCode).toBe(401)
-    expect(JSON.parse(state.body ?? '{}')).toEqual({ error: API_UNAUTHORIZED_MESSAGE })
+    const payload = JSON.parse(state.body ?? '{}')
+    expect(payload.error).toBe(API_UNAUTHORIZED_MESSAGE)
+    expect(payload.correlationId).toBeDefined()
   })
 
   it('blocks access when the API token is not configured', async () => {
@@ -140,7 +152,9 @@ describe('createAskRouteMiddleware', () => {
     await middleware(req, res, jest.fn())
 
     expect(state.statusCode).toBe(503)
-    expect(JSON.parse(state.body ?? '{}')).toEqual({ error: API_ACCESS_NOT_CONFIGURED_MESSAGE })
+    const payload = JSON.parse(state.body ?? '{}')
+    expect(payload.error).toBe(API_ACCESS_NOT_CONFIGURED_MESSAGE)
+    expect(payload.correlationId).toBeDefined()
   })
 
   it('returns a validation error for an empty question', async () => {
@@ -151,7 +165,9 @@ describe('createAskRouteMiddleware', () => {
     await middleware(req, res, jest.fn())
 
     expect(state.statusCode).toBe(400)
-    expect(JSON.parse(state.body ?? '{}')).toEqual({ error: EMPTY_QUESTION_ERROR })
+    const payload = JSON.parse(state.body ?? '{}')
+    expect(payload.error).toBe(EMPTY_QUESTION_ERROR)
+    expect(payload.correlationId).toBeDefined()
   })
 
   it('returns insufficient_context without crashing', async () => {
@@ -187,7 +203,10 @@ describe('createAskRouteMiddleware', () => {
     await middleware(req, res, jest.fn())
 
     expect(state.statusCode).toBe(200)
-    expect(JSON.parse(state.body ?? '{}')).toEqual({ status: 'ok' })
+    const payload = JSON.parse(state.body ?? '{}')
+    expect(payload.status).toBe('ok')
+    expect(payload.correlationId).toBeDefined()
+    expect(state.headers['x-correlation-id']).toBeDefined()
   })
 
   it('handles POST /api/summary on the happy path', async () => {
@@ -206,6 +225,51 @@ describe('createAskRouteMiddleware', () => {
     expect(payload.status).toBe(SUCCESS_STATUS)
     expect(payload.sections.overview.length).toBeGreaterThan(0)
     expect(payload.citations.length).toBeGreaterThan(0)
+  })
+
+  it('returns maintenance response when AI_MAINTENANCE_MODE is enabled', async () => {
+    process.env[AI_MAINTENANCE_MODE_ENV] = 'true'
+
+    const middleware = createAskRouteMiddleware({ answerProvider: fakeAnswerProvider })
+    const req = createMockRequest({
+      body: { question: 'What are quiet hours?' },
+    })
+    const { res, state } = createMockResponse()
+
+    await middleware(req, res, jest.fn())
+
+    expect(state.statusCode).toBe(503)
+    const payload = JSON.parse(state.body ?? '{}')
+    expect(payload.error).toContain('maintenance')
+  })
+
+  it('serves Prometheus metrics at GET /metrics', async () => {
+    const middleware = createAskRouteMiddleware({ answerProvider: fakeAnswerProvider })
+    const req = createMockRequest({ method: 'GET', url: METRICS_ROUTE_PATH, body: null })
+    const { res, state } = createMockResponse()
+
+    await middleware(req, res, jest.fn())
+
+    expect(state.statusCode).toBe(200)
+    expect(state.headers['content-type']).toContain('text/plain')
+    expect(state.body).toContain('ai_requests_total')
+  })
+
+  it('serves the AI dashboard at GET /api/ai/dashboard', async () => {
+    const middleware = createAskRouteMiddleware({ answerProvider: fakeAnswerProvider })
+    const req = createMockRequest({
+      method: 'GET',
+      url: AI_DASHBOARD_ROUTE_PATH,
+      body: null,
+    })
+    const { res, state } = createMockResponse()
+
+    await middleware(req, res, jest.fn())
+
+    expect(state.statusCode).toBe(200)
+    const payload = JSON.parse(state.body ?? '{}')
+    expect(payload.spend).toBeDefined()
+    expect(payload.monitoring).toBeDefined()
   })
 })
 

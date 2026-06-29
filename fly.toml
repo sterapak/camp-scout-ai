@@ -2,7 +2,7 @@
 # Deploy: fly deploy
 # Secrets:
 #   fly secrets set CAMP_SCOUT_API_TOKEN=...
-#   fly secrets set OPENAI_ANSWER_PROVIDER=openai OPENAI_API_KEY=... OPENAI_MODEL=gpt-4o-mini
+#   fly secrets set AI_ENABLED=true OPENAI_ANSWER_PROVIDER=openai OPENAI_API_KEY=... OPENAI_MODEL=gpt-4o-mini
 
 app = 'campscout'
 primary_region = 'ord'
@@ -12,6 +12,7 @@ primary_region = 'ord'
 [env]
   NODE_ENV = 'production'
   OPENAI_ANSWER_PROVIDER = 'fake'
+  AI_ENABLED = 'false'
 
 [http_service]
   internal_port = 8080

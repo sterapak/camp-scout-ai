@@ -17,7 +17,6 @@ const DEFAULT_TIMEOUT_MS = 30000
  * @returns {Promise<FetchSourceResult>}
  */
 export async function fetchSource(sourceUrl, options = {}) {
-  const fetchImpl = options.fetchImpl ?? fetch
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const userAgent = options.userAgent ?? DEFAULT_USER_AGENT
 
@@ -39,6 +38,7 @@ export async function fetchSource(sourceUrl, options = {}) {
     }
   }
 
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
