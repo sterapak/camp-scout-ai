@@ -22,4 +22,7 @@ process.env.VITE_SUPABASE_KEY = 'dummy-key';
 
 // Keep OpenAI answer generation on the fake provider in unit tests.
 process.env.OPENAI_ANSWER_PROVIDER = 'fake';
-delete process.env.OPENAI_API_KEY; 
+delete process.env.OPENAI_API_KEY;
+
+// Protected AI routes require an internal token in middleware tests.
+process.env.CAMP_SCOUT_API_TOKEN = 'test-api-token'; 

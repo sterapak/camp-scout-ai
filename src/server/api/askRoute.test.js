@@ -3,6 +3,12 @@
 import { EventEmitter } from 'events'
 import { fakeAnswerProvider } from '../openai/fakeAnswerProvider.js'
 import {
+  API_ACCESS_NOT_CONFIGURED_MESSAGE,
+  API_UNAUTHORIZED_MESSAGE,
+  CAMP_SCOUT_API_TOKEN_ENV,
+  resetRateLimitState,
+} from './apiProtection.js'
+import {
   ASK_ROUTE_PATH,
   HEALTH_ROUTE_PATH,
   SUMMARY_ROUTE_PATH,
@@ -42,10 +48,17 @@ function createMockResponse() {
   return { res, state }
 }
 
-function createMockRequest({ method = 'POST', url = ASK_ROUTE_PATH, body = null }) {
+function createMockRequest({
+  method = 'POST',
+  url = ASK_ROUTE_PATH,
+  body = null,
+  headers = { authorization: 'Bearer test-api-token' },
+}) {
   const req = new EventEmitter()
   req.method = method
   req.url = url
+  req.headers = headers
+  req.socket = { remoteAddress: '127.0.0.1' }
 
   queueMicrotask(() => {
     if (body === null) {
@@ -73,6 +86,11 @@ describe('readJsonRequestBody', () => {
 })
 
 describe('createAskRouteMiddleware', () => {
+  beforeEach(() => {
+    resetRateLimitState()
+    process.env[CAMP_SCOUT_API_TOKEN_ENV] = 'test-api-token'
+  })
+
   it('handles POST /api/ask on the happy path', async () => {
     const middleware = createAskRouteMiddleware({ answerProvider: fakeAnswerProvider })
     const req = createMockRequest({
@@ -94,6 +112,35 @@ describe('createAskRouteMiddleware', () => {
     expect(payload.status).toBe(SUCCESS_STATUS)
     expect(payload.answer).toContain('Fake provider answer for:')
     expect(payload.citations.length).toBeGreaterThan(0)
+  })
+
+  it('blocks unauthenticated access to /api/ask', async () => {
+    const middleware = createAskRouteMiddleware({ answerProvider: fakeAnswerProvider })
+    const req = createMockRequest({
+      headers: {},
+      body: { question: 'What are the bear food storage rules?' },
+    })
+    const { res, state } = createMockResponse()
+
+    await middleware(req, res, jest.fn())
+
+    expect(state.statusCode).toBe(401)
+    expect(JSON.parse(state.body ?? '{}')).toEqual({ error: API_UNAUTHORIZED_MESSAGE })
+  })
+
+  it('blocks access when the API token is not configured', async () => {
+    delete process.env[CAMP_SCOUT_API_TOKEN_ENV]
+
+    const middleware = createAskRouteMiddleware({ answerProvider: fakeAnswerProvider })
+    const req = createMockRequest({
+      body: { question: 'What are the bear food storage rules?' },
+    })
+    const { res, state } = createMockResponse()
+
+    await middleware(req, res, jest.fn())
+
+    expect(state.statusCode).toBe(503)
+    expect(JSON.parse(state.body ?? '{}')).toEqual({ error: API_ACCESS_NOT_CONFIGURED_MESSAGE })
   })
 
   it('returns a validation error for an empty question', async () => {

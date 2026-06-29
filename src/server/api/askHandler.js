@@ -5,6 +5,7 @@
 
 import { generateGroundedAnswer } from '../rag/groundedAnswerGenerator.js'
 import { mapOpenAiErrorToHttpResponse } from '../openai/mapOpenAiHttpError.js'
+import { validateAskRequestGuardrails } from './requestGuardrails.js'
 
 /**
  * @typedef {Object} AskRequestBody
@@ -70,6 +71,11 @@ export function validateAskRequestBody(body) {
     value.topDocumentCount = body.topDocumentCount
   }
 
+  const guardrails = validateAskRequestGuardrails(value)
+  if (!guardrails.ok) {
+    return guardrails
+  }
+
   return { ok: true, value }
 }
 
@@ -79,6 +85,7 @@ export function validateAskRequestBody(body) {
  * @param {{
  *   answerProvider?: import('../openai/answerProvider.js').AnswerProvider,
  *   provider?: import('../openai/createAnswerProvider.js').AnswerProviderName,
+ *   protectedAccess?: boolean,
  * }} [options]
  * @returns {Promise<AskHttpResponse>}
  */
@@ -99,6 +106,7 @@ export async function handleAskRequest(body, options = {}) {
       topDocumentCount: validation.value.topDocumentCount,
       answerProvider: options.answerProvider,
       provider: options.provider,
+      protectedAccess: options.protectedAccess === true,
     })
 
     return {

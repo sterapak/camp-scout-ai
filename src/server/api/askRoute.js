@@ -3,25 +3,50 @@
  * Server-only; wired into Vite dev/preview servers via askApiPlugin.
  */
 
+import {
+  checkRouteRateLimit,
+  resolveClientIp,
+  resolveProtectedAnswerProvider,
+  validateApiAccess,
+} from './apiProtection.js'
 import { handleAskRequest, INVALID_JSON_ERROR } from './askHandler.js'
 import { handleSummaryRequest } from './summaryHandler.js'
+import {
+  JsonBodyTooLargeError,
+  resolveMaxJsonBodyBytes,
+} from './requestGuardrails.js'
 
 export const ASK_ROUTE_PATH = '/api/ask'
 export const SUMMARY_ROUTE_PATH = '/api/summary'
 export const HEALTH_ROUTE_PATH = '/health'
 
+const PROTECTED_ROUTE_PATHS = new Set([ASK_ROUTE_PATH, SUMMARY_ROUTE_PATH])
+
 /**
  * Reads and parses a JSON request body from a Node HTTP request.
  * @param {import('http').IncomingMessage} req
+ * @param {{ maxBytes?: number }} [options]
  * @returns {Promise<unknown>}
  */
-export function readJsonRequestBody(req) {
+export function readJsonRequestBody(req, options = {}) {
+  const maxBytes = options.maxBytes ?? resolveMaxJsonBodyBytes()
+
   return new Promise((resolve, reject) => {
     /** @type {Buffer[]} */
     const chunks = []
+    let totalBytes = 0
 
     req.on('data', (chunk) => {
-      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk)
+      const buffer = typeof chunk === 'string' ? Buffer.from(chunk) : chunk
+      totalBytes += buffer.length
+
+      if (totalBytes > maxBytes) {
+        reject(new JsonBodyTooLargeError())
+        req.destroy()
+        return
+      }
+
+      chunks.push(buffer)
     })
 
     req.on('end', () => {
@@ -61,6 +86,7 @@ export function sendJsonResponse(res, statusCode, body) {
  *   answerProvider?: import('../openai/answerProvider.js').AnswerProvider,
  *   provider?: import('../openai/createAnswerProvider.js').AnswerProviderName,
  *   reloadOpenAiEnv?: () => void,
+ *   skipApiProtection?: boolean,
  * }} [options]
  * @returns {(req: import('http').IncomingMessage, res: import('http').ServerResponse, next: () => void) => Promise<void>}
  */
@@ -79,7 +105,7 @@ export function createAskRouteMiddleware(options = {}) {
       return
     }
 
-    if (pathname !== ASK_ROUTE_PATH && pathname !== SUMMARY_ROUTE_PATH) {
+    if (!PROTECTED_ROUTE_PATHS.has(pathname)) {
       next()
       return
     }
@@ -90,15 +116,42 @@ export function createAskRouteMiddleware(options = {}) {
       return
     }
 
+    if (!options.skipApiProtection) {
+      const access = validateApiAccess(req)
+      if (!access.ok) {
+        sendJsonResponse(res, access.statusCode, access.body)
+        return
+      }
+
+      const clientIp = resolveClientIp(req)
+      const rateLimit = checkRouteRateLimit(pathname, clientIp)
+      if (!rateLimit.ok) {
+        sendJsonResponse(res, rateLimit.statusCode, rateLimit.body)
+        return
+      }
+    }
+
     try {
       options.reloadOpenAiEnv?.()
       const body = await readJsonRequestBody(req)
+      const handlerOptions = {
+        ...options,
+        provider: options.skipApiProtection
+          ? options.provider
+          : resolveProtectedAnswerProvider(),
+        protectedAccess: options.skipApiProtection ? options.protectedAccess === true : true,
+      }
       const response =
         pathname === SUMMARY_ROUTE_PATH
-          ? await handleSummaryRequest(body, options)
-          : await handleAskRequest(body, options)
+          ? await handleSummaryRequest(body, handlerOptions)
+          : await handleAskRequest(body, handlerOptions)
       sendJsonResponse(res, response.statusCode, response.body)
     } catch (error) {
+      if (error instanceof JsonBodyTooLargeError) {
+        sendJsonResponse(res, 413, { error: error.message })
+        return
+      }
+
       if (error instanceof SyntaxError) {
         sendJsonResponse(res, 400, { error: INVALID_JSON_ERROR })
         return

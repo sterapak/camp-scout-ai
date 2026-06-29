@@ -5,6 +5,7 @@
 
 import { getCampgroundSummary } from '../rag/campgroundSummaryService.js'
 import { mapOpenAiErrorToHttpResponse } from '../openai/mapOpenAiHttpError.js'
+import { validateSummaryRequestGuardrails } from './requestGuardrails.js'
 
 /**
  * @typedef {Object} SummaryRequestBody
@@ -46,6 +47,11 @@ export function validateSummaryRequestBody(body) {
     value.forceRegenerate = body.forceRegenerate
   }
 
+  const guardrails = validateSummaryRequestGuardrails(value)
+  if (!guardrails.ok) {
+    return guardrails
+  }
+
   return { ok: true, value }
 }
 
@@ -55,6 +61,7 @@ export function validateSummaryRequestBody(body) {
  * @param {{
  *   answerProvider?: import('../openai/answerProvider.js').AnswerProvider,
  *   provider?: import('../openai/createAnswerProvider.js').AnswerProviderName,
+ *   protectedAccess?: boolean,
  * }} [options]
  * @returns {Promise<{ statusCode: number, body: import('../rag/campgroundSummaryGenerator.js').CampgroundSummaryResult | { error: string } }>}
  */
@@ -73,6 +80,7 @@ export async function handleSummaryRequest(body, options = {}) {
       forceRegenerate: validation.value.forceRegenerate ?? false,
       answerProvider: options.answerProvider,
       provider: options.provider,
+      protectedAccess: options.protectedAccess === true,
     })
 
     return {

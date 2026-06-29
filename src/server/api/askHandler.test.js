@@ -44,6 +44,27 @@ describe('validateAskRequestBody', () => {
       expect(result.body.error).toBe(EMPTY_QUESTION_ERROR)
     }
   })
+
+  it('rejects an oversized question', () => {
+    const result = validateAskRequestBody({ question: 'a'.repeat(501) })
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.statusCode).toBe(400)
+    }
+  })
+
+  it('rejects an excessive topDocumentCount', () => {
+    const result = validateAskRequestBody({
+      question: 'What are the bear rules?',
+      topDocumentCount: 99,
+    })
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.statusCode).toBe(400)
+    }
+  })
 })
 
 describe('handleAskRequest', () => {

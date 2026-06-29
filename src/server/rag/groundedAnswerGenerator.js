@@ -223,6 +223,7 @@ function formatOrganizationReference(sourceName) {
  *   maxContextTokens?: number,
  *   answerProvider?: import('../openai/answerProvider.js').AnswerProvider,
  *   provider?: import('../openai/createAnswerProvider.js').AnswerProviderName,
+ *   protectedAccess?: boolean,
  * }} [options]
  * @returns {Promise<GroundedAnswerResult>}
  */
@@ -235,6 +236,7 @@ export async function generateGroundedAnswer({
   maxContextTokens = GROUNDED_ANSWER_MAX_CONTEXT_TOKENS,
   answerProvider,
   provider,
+  protectedAccess = false,
 } = {}) {
   const trimmedQuestion = (question ?? '').trim()
 
@@ -275,7 +277,10 @@ export async function generateGroundedAnswer({
     maxContextTokens,
   })
 
-  const providerInstance = answerProvider ?? createAnswerProvider({ provider })
+  const providerInstance = answerProvider ?? createAnswerProvider({
+    provider,
+    protectedAccess,
+  })
   const resolvedMaxOutputTokens = resolveMaxOutputTokens(maxOutputTokens)
   const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini'
 

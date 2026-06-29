@@ -16,9 +16,14 @@ export const ANSWER_PROVIDER_ENV = 'OPENAI_ANSWER_PROVIDER'
 /**
  * Resolves which answer provider to use.
  * @param {string | undefined} explicitProvider
+ * @param {{ protectedAccess?: boolean }} [options]
  * @returns {AnswerProviderName}
  */
-export function resolveAnswerProviderName(explicitProvider) {
+export function resolveAnswerProviderName(explicitProvider, options = {}) {
+  if (!options.protectedAccess) {
+    return 'fake'
+  }
+
   const configured = explicitProvider ?? process.env[ANSWER_PROVIDER_ENV] ?? 'fake'
   return configured === 'openai' ? 'openai' : 'fake'
 }
@@ -32,11 +37,14 @@ export function resolveAnswerProviderName(explicitProvider) {
  *   fetchImpl?: typeof fetch,
  *   defaultModel?: string,
  *   defaultMaxOutputTokens?: number,
+ *   protectedAccess?: boolean,
  * }} [options]
  * @returns {import('./answerProvider.js').AnswerProvider}
  */
 export function createAnswerProvider(options = {}) {
-  const providerName = resolveAnswerProviderName(options.provider)
+  const providerName = resolveAnswerProviderName(options.provider, {
+    protectedAccess: options.protectedAccess === true,
+  })
 
   logOpenAiDiagnostic('createAnswerProvider', {
     explicitProvider: options.provider ?? null,

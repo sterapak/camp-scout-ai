@@ -32,6 +32,7 @@ import { resolveKnowledgeSnapshot } from './knowledgeSnapshot.js'
  *   now?: () => Date,
  *   answerProvider?: import('../openai/answerProvider.js').AnswerProvider,
  *   provider?: import('../openai/createAnswerProvider.js').AnswerProviderName,
+ *   protectedAccess?: boolean,
  *   maxOutputTokens?: number,
  * }} options
  * @returns {Promise<CampgroundSummaryResponse>}
@@ -42,12 +43,18 @@ export async function getCampgroundSummary({
   now = () => new Date(),
   answerProvider,
   provider,
+  protectedAccess = false,
   maxOutputTokens,
 } = {}) {
   const trimmedCampgroundId = (campgroundId ?? '').trim()
 
   if (trimmedCampgroundId.length === 0) {
-    return generateCampgroundSummary({ campgroundId: trimmedCampgroundId, answerProvider, provider })
+    return generateCampgroundSummary({
+      campgroundId: trimmedCampgroundId,
+      answerProvider,
+      provider,
+      protectedAccess,
+    })
   }
 
   const knowledgeSnapshot = resolveKnowledgeSnapshot(trimmedCampgroundId)
@@ -68,6 +75,7 @@ export async function getCampgroundSummary({
     campgroundId: trimmedCampgroundId,
     answerProvider,
     provider,
+    protectedAccess,
     maxOutputTokens,
   })
 
