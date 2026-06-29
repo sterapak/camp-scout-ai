@@ -1,12 +1,13 @@
 module.exports = {
   testEnvironment: 'jsdom',
-  moduleFileExtensions: ['js', 'jsx'],
+  moduleFileExtensions: ['js', 'jsx', 'ts'],
   transform: {
-    '^.+\\.(js|jsx)$': 'babel-jest',
+    '^.+\\.(js|jsx|ts)$': 'babel-jest',
   },
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '\\.(png|jpg|jpeg|gif|svg)$': '<rootDir>/__mocks__/fileMock.js',
+    '^\\./askRoute\\.js$': '<rootDir>/src/server/api/askRoute.ts',
   },
   setupFilesAfterEnv: ['@testing-library/jest-dom'],
   setupFiles: ['<rootDir>/jest.setup.js'],

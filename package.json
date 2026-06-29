@@ -8,7 +8,7 @@
     "build": "vite build",
     "build:fly": "CAMP_SCOUT_BASE=/ BUILD_OUT_DIR=dist vite build",
     "preview": "vite preview",
-    "start": "node server/production.mjs",
+    "start": "npx tsx server/production.mjs",
     "lint": "eslint src --ext .js --ext .jsx",
     "lint:fix": "eslint src --ext .js --ext .jsx --fix",
     "test": "jest --coverage",
@@ -24,6 +24,7 @@
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.6.2",
     "supabase": "^2.0.0",
+    "tsx": "^4.22.4",
     "zustand": "^5.0.5"
   },
   "devDependencies": {

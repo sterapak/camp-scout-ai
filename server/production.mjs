@@ -8,7 +8,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs'
 import { extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { createAskRouteMiddleware } from '../src/server/api/askRoute.js'
+import { createAskRouteMiddleware } from '../src/server/api/askRoute.ts'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const STATIC_ROOT = join(__dirname, '../dist')

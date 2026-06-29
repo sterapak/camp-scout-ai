@@ -2,7 +2,7 @@
  * Vite plugin that exposes POST /api/ask during dev and preview.
  */
 
-import { createAskRouteMiddleware } from './askRoute.js'
+import { createAskRouteMiddleware } from './askRoute.ts'
 import { loadOpenAiServerEnv } from '../env/loadOpenAiServerEnv.js'
 import { logOpenAiEnvDiagnostic } from '../openai/logOpenAiDiagnostic.js'
 
