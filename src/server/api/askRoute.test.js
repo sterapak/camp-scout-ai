@@ -4,6 +4,7 @@ import { EventEmitter } from 'events'
 import { fakeAnswerProvider } from '../openai/fakeAnswerProvider.js'
 import {
   ASK_ROUTE_PATH,
+  HEALTH_ROUTE_PATH,
   SUMMARY_ROUTE_PATH,
   createAskRouteMiddleware,
   readJsonRequestBody,
@@ -129,6 +130,17 @@ describe('createAskRouteMiddleware', () => {
     await middleware(req, res, next)
 
     expect(next).toHaveBeenCalledTimes(1)
+  })
+
+  it('handles GET /health', async () => {
+    const middleware = createAskRouteMiddleware({ answerProvider: fakeAnswerProvider })
+    const req = createMockRequest({ method: 'GET', url: HEALTH_ROUTE_PATH, body: null })
+    const { res, state } = createMockResponse()
+
+    await middleware(req, res, jest.fn())
+
+    expect(state.statusCode).toBe(200)
+    expect(JSON.parse(state.body ?? '{}')).toEqual({ status: 'ok' })
   })
 
   it('handles POST /api/summary on the happy path', async () => {

@@ -1,0 +1,32 @@
+# Fly.io app for https://campscout.terapak.com/
+# Deploy: fly deploy
+# Secrets: fly secrets set OPENAI_ANSWER_PROVIDER=openai OPENAI_API_KEY=... OPENAI_MODEL=gpt-4o-mini
+
+app = 'campscout'
+primary_region = 'ord'
+
+[build]
+
+[env]
+  NODE_ENV = 'production'
+  OPENAI_ANSWER_PROVIDER = 'fake'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+
+  [[http_service.checks]]
+    interval = '15s'
+    timeout = '5s'
+    grace_period = '20s'
+    method = 'GET'
+    path = '/health'
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
