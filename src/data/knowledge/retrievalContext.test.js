@@ -38,4 +38,17 @@ describe('retrievalContext', () => {
     expect(context.promptContext).toBe('')
     expect(context.sourceCount).toBe(0)
   })
+
+  it('caps oversized retrieved context to the configured token budget', () => {
+    const oversizedResults = retrieveDocuments({ query: 'bear', campgroundId: 'yosemite-upper-pines', limit: 3 })
+    const context = buildRetrievalContext({
+      question: 'What are the bear rules?',
+      results: oversizedResults,
+      maxContextTokens: 40,
+    })
+
+    expect(context.estimatedPromptTokens).toBeLessThanOrEqual(40)
+    expect(context.contextTruncated).toBe(true)
+    expect(context.promptContext).toContain('User question: What are the bear rules?')
+  })
 })

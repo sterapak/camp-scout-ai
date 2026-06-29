@@ -127,6 +127,31 @@ describe('handleAskRequest', () => {
     expect(JSON.stringify(response.body)).not.toMatch(/OPENAI_API_KEY|Upstream failure|sk-proj-|sk-live-/)
   })
 
+  it('returns a clear quota error instead of 502 when OpenAI quota is exhausted', async () => {
+    const response = await handleAskRequest(
+      {
+        question: 'What are the bear food storage rules?',
+        campgroundId: 'yosemite-upper-pines',
+      },
+      {
+        answerProvider: {
+          name: 'openai',
+          async generateAnswer() {
+            throw new OpenAiResponseError('You exceeded your current quota.', {
+              status: 429,
+              errorCode: 'insufficient_quota',
+            })
+          },
+        },
+      },
+    )
+
+    expect(response.statusCode).toBe(503)
+    expect(response.statusCode).not.toBe(502)
+    expect(response.body.error).toMatch(/quota|credits/i)
+    expect(JSON.stringify(response.body)).not.toMatch(/OPENAI_API_KEY|You exceeded|sk-proj-|sk-live-/)
+  })
+
   it('retrieves Silver Lake West campsite count for camping site questions', () => {
     const results = retrieveDocuments({
       query: 'how many camping sites at silver lake?',

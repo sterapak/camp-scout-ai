@@ -22,3 +22,20 @@ export class OpenAiResponseError extends Error {
     this.errorCode = details.errorCode
   }
 }
+
+/**
+ * Returns true when OpenAI reported exhausted quota or credits.
+ * @param {unknown} error
+ * @returns {boolean}
+ */
+export function isOpenAiQuotaExceededError(error) {
+  if (!(error instanceof OpenAiResponseError)) {
+    return false
+  }
+
+  if (error.errorCode === 'insufficient_quota') {
+    return true
+  }
+
+  return error.status === 429 && error.errorCode === 'insufficient_quota'
+}

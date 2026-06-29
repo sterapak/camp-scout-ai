@@ -4,6 +4,10 @@
  */
 
 import { getDocumentTypeLabel } from '../knowledgeSchema.js'
+import {
+  estimateTokenCount,
+  truncateTextToTokenBudget,
+} from '../../server/openai/promptLimits.js'
 
 /**
  * @typedef {import('./knowledgeRetrieval.js').RetrievalResult} RetrievalResult
@@ -25,14 +29,36 @@ import { getDocumentTypeLabel } from '../knowledgeSchema.js'
  * @property {string} promptContext - Structured text ready to prepend to an LLM prompt
  * @property {RetrievalContextSource[]} sources - Metadata for cited sources
  * @property {number} sourceCount
+ * @property {number} [estimatedPromptTokens]
+ * @property {boolean} [contextTruncated]
  */
 
 /**
+ * Builds a single source block.
+ * @param {RetrievalResult} result
+ * @param {number} index
+ * @returns {string}
+ */
+function buildContextBlock(result, index) {
+  const { document, sourceUrl, sourceName, campgroundName } = result
+  const typeLabel = getDocumentTypeLabel(document.documentType)
+
+  return [
+    `### Source ${index + 1}: ${document.title}`,
+    `Campground: ${campgroundName ?? document.campgroundId}`,
+    `Type: ${typeLabel}`,
+    `Source: ${sourceName} (${sourceUrl})`,
+    '',
+    document.content,
+  ].join('\n')
+}
+
+/**
  * Builds prompt-ready context from retrieval results.
- * @param {{ question: string, results: RetrievalResult[] }} options
+ * @param {{ question: string, results: RetrievalResult[], maxContextTokens?: number }} options
  * @returns {RetrievalContext}
  */
-export function buildRetrievalContext({ question = '', results = [] } = {}) {
+export function buildRetrievalContext({ question = '', results = [], maxContextTokens } = {}) {
   const trimmedQuestion = question.trim()
 
   const sources = results.map((result) => ({
@@ -46,30 +72,22 @@ export function buildRetrievalContext({ question = '', results = [] } = {}) {
   }))
 
   if (results.length === 0) {
+    const promptContext = trimmedQuestion
+      ? `User question: ${trimmedQuestion}\n\nNo matching knowledge documents were found.`
+      : ''
+
     return {
-      promptContext: trimmedQuestion
-        ? `User question: ${trimmedQuestion}\n\nNo matching knowledge documents were found.`
-        : '',
+      promptContext,
       sources,
       sourceCount: 0,
+      estimatedPromptTokens: estimateTokenCount(promptContext),
+      contextTruncated: false,
     }
   }
 
-  const contextBlocks = results.map((result, index) => {
-    const { document, sourceUrl, sourceName, campgroundName } = result
-    const typeLabel = getDocumentTypeLabel(document.documentType)
+  const contextBlocks = results.map((result, index) => buildContextBlock(result, index))
 
-    return [
-      `### Source ${index + 1}: ${document.title}`,
-      `Campground: ${campgroundName ?? document.campgroundId}`,
-      `Type: ${typeLabel}`,
-      `Source: ${sourceName} (${sourceUrl})`,
-      '',
-      document.content,
-    ].join('\n')
-  })
-
-  const promptContext = [
+  let promptContext = [
     trimmedQuestion ? `User question: ${trimmedQuestion}` : null,
     '',
     'The following official campground knowledge may help answer the question:',
@@ -79,9 +97,19 @@ export function buildRetrievalContext({ question = '', results = [] } = {}) {
     .filter((line) => line !== null)
     .join('\n')
 
+  let contextTruncated = false
+
+  if (typeof maxContextTokens === 'number' && maxContextTokens > 0) {
+    const cappedPrompt = truncateTextToTokenBudget(promptContext, maxContextTokens)
+    promptContext = cappedPrompt.text
+    contextTruncated = cappedPrompt.truncated
+  }
+
   return {
     promptContext,
     sources,
     sourceCount: sources.length,
+    estimatedPromptTokens: estimateTokenCount(promptContext),
+    contextTruncated,
   }
 }

@@ -9,6 +9,12 @@ import {
 } from './answerProvider.js'
 import { MissingOpenAiApiKeyError, OpenAiResponseError } from './errors.js'
 import { logOpenAiDiagnostic } from './logOpenAiDiagnostic.js'
+import {
+  estimateTokenCount,
+  resolveMaxContextTokens,
+  resolveMaxOutputTokens,
+  truncateTextToTokenBudget,
+} from './promptLimits.js'
 
 export const OPENAI_API_KEY_ENV = 'OPENAI_API_KEY'
 export const OPENAI_MODEL_ENV = 'OPENAI_MODEL'
@@ -101,16 +107,16 @@ export function extractOutputText(payload) {
 export function createOpenAiAnswerProvider(options = {}) {
   const fetchImpl = options.fetchImpl ?? fetch
   const defaultModel = options.defaultModel ?? process.env[OPENAI_MODEL_ENV] ?? DEFAULT_OPENAI_MODEL
-  const defaultMaxOutputTokens = options.defaultMaxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS
+  const defaultMaxOutputTokens = resolveMaxOutputTokens(options.defaultMaxOutputTokens)
 
   return {
     name: 'openai',
     async generateAnswer(request) {
       const apiKey = resolveOpenAiApiKey(options.apiKey)
       const baseUrl = resolveOpenAiBaseUrl(options.baseUrl)
-      const input = typeof request?.input === 'string' ? request.input.trim() : ''
+      const rawInput = typeof request?.input === 'string' ? request.input.trim() : ''
 
-      if (input.length === 0) {
+      if (rawInput.length === 0) {
         logOpenAiDiagnostic('generateAnswer.emptyInput', {
           provider: 'openai',
           model: defaultModel,
@@ -123,9 +129,18 @@ export function createOpenAiAnswerProvider(options = {}) {
         ? request.model.trim()
         : defaultModel
 
-      const maxOutputTokens = typeof request?.maxOutputTokens === 'number' && request.maxOutputTokens > 0
-        ? request.maxOutputTokens
-        : defaultMaxOutputTokens
+      const maxOutputTokens = resolveMaxOutputTokens(request?.maxOutputTokens, defaultMaxOutputTokens)
+      const maxContextTokens = resolveMaxContextTokens()
+      const cappedInput = truncateTextToTokenBudget(rawInput, maxContextTokens)
+      const input = cappedInput.text
+
+      logOpenAiDiagnostic('generateAnswer.request', {
+        provider: 'openai',
+        model,
+        promptTokenEstimate: estimateTokenCount(input),
+        maxOutputTokens,
+        contextTruncated: cappedInput.truncated,
+      })
 
       const body = {
         model,
@@ -212,6 +227,16 @@ export function createOpenAiAnswerProvider(options = {}) {
       }
 
       const usage = payload?.usage && typeof payload.usage === 'object' ? payload.usage : {}
+
+      logOpenAiDiagnostic('generateAnswer.success', {
+        provider: 'openai',
+        model: typeof payload?.model === 'string' ? payload.model : model,
+        responseStatus: response.status,
+        promptTokenEstimate: typeof usage.input_tokens === 'number'
+          ? usage.input_tokens
+          : estimateTokenCount(input),
+        maxOutputTokens,
+      })
 
       return {
         text,
