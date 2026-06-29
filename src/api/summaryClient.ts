@@ -1,4 +1,5 @@
 import type { SummaryRequest, SummaryResponse } from '../shared/types/api.js'
+import { buildApiRequestHeaders } from './apiAuth.js'
 
 export const SUMMARY_API_PATH = '/api/summary'
 
@@ -17,7 +18,7 @@ export type SummaryApiResult = SummaryResponse
 export async function postSummary(params: Pick<SummaryRequest, 'campgroundId'>): Promise<SummaryApiResult> {
   const response = await fetch(SUMMARY_API_PATH, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: buildApiRequestHeaders(),
     body: JSON.stringify({ campgroundId: params.campgroundId.trim() } satisfies SummaryRequest),
   })
 

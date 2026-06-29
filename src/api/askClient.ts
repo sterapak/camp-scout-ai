@@ -1,4 +1,5 @@
 import type { AskRequest, AskResponse } from '../shared/types/api.js'
+import { buildApiRequestHeaders } from './apiAuth.js'
 
 export const ASK_API_PATH = '/api/ask'
 
@@ -24,7 +25,7 @@ export async function postAsk(params: Pick<AskRequest, 'question' | 'campgroundI
 
   const response = await fetch(ASK_API_PATH, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: buildApiRequestHeaders(),
     body: JSON.stringify(body),
   })
 
