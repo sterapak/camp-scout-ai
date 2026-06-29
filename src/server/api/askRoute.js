@@ -8,6 +8,7 @@ import { handleSummaryRequest } from './summaryHandler.js'
 
 export const ASK_ROUTE_PATH = '/api/ask'
 export const SUMMARY_ROUTE_PATH = '/api/summary'
+export const HEALTH_ROUTE_PATH = '/health'
 
 /**
  * Reads and parses a JSON request body from a Node HTTP request.
@@ -66,6 +67,17 @@ export function sendJsonResponse(res, statusCode, body) {
 export function createAskRouteMiddleware(options = {}) {
   return async function apiRouteMiddleware(req, res, next) {
     const pathname = req.url?.split('?')[0] ?? ''
+
+    if (pathname === HEALTH_ROUTE_PATH) {
+      if (req.method !== 'GET') {
+        res.setHeader('Allow', 'GET')
+        sendJsonResponse(res, 405, { error: 'Method not allowed. Use GET.' })
+        return
+      }
+
+      sendJsonResponse(res, 200, { status: 'ok' })
+      return
+    }
 
     if (pathname !== ASK_ROUTE_PATH && pathname !== SUMMARY_ROUTE_PATH) {
       next()

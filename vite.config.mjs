@@ -4,7 +4,9 @@ import path from 'path';
 import { askApiPlugin } from './src/server/api/askApiPlugin.js';
 
 export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/camp-scout-ai/' : '/',
+  base:
+    process.env.CAMP_SCOUT_BASE ??
+    (command === 'build' ? '/camp-scout-ai/' : '/'),
   plugins: [react(), askApiPlugin()],
   resolve: {
     alias: {
@@ -12,7 +14,7 @@ export default defineConfig(({ command }) => ({
     },
   },
   build: {
-    outDir: 'docs',
+    outDir: process.env.BUILD_OUT_DIR ?? 'docs',
     emptyOutDir: false,
   },
   server: {

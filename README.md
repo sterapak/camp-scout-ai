@@ -35,6 +35,8 @@ The app runs at [http://localhost:5173](http://localhost:5173).
 
 **GitHub Pages:** [https://sterapak.github.io/camp-scout-ai/campgrounds](https://sterapak.github.io/camp-scout-ai/campgrounds)
 
+**Production (Fly.io):** [https://campscout.terapak.com/](https://campscout.terapak.com/)
+
 > The old `/smartapp-ui-kit/` URL is no longer valid. Use `/camp-scout-ai/` on GitHub Pages or `/campgrounds` locally.
 
 ## Testing
@@ -67,6 +69,27 @@ Behavior:
 - Performs no git, deployment, or release actions
 
 Use this before commits and deployments to validate the project.
+
+## Fly.io Deployment
+
+`campscout.terapak.com` is served from Fly.io. A 502 Bad Gateway usually means the Fly app has no healthy machine running.
+
+```bash
+# One-time: install Fly CLI and authenticate
+# https://fly.io/docs/hands-on/install-flyctl/
+
+# Build and run locally (root base path, dist/ output)
+npm run build:fly
+npm start
+
+# Deploy to Fly (from repo root; requires fly auth)
+fly deploy
+
+# Set OpenAI secrets for live AI answers (optional; defaults to fake provider)
+fly secrets set OPENAI_ANSWER_PROVIDER=openai OPENAI_API_KEY=sk-... OPENAI_MODEL=gpt-4o-mini
+```
+
+Health check: `GET /health` returns `{"status":"ok"}`.
 
 ## Project Structure
 

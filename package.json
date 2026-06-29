@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:fly": "CAMP_SCOUT_BASE=/ BUILD_OUT_DIR=dist vite build",
     "preview": "vite preview",
+    "start": "node server/production.mjs",
     "lint": "eslint src --ext .js --ext .jsx",
     "lint:fix": "eslint src --ext .js --ext .jsx --fix",
     "test": "jest --coverage",
