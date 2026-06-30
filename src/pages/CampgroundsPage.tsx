@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import AvailabilityNotice from '../components/AvailabilityNotice'
-import DonationCard from '../components/DonationCard'
 import CampgroundFilters from '../components/CampgroundFilters'
 import CampgroundList from '../components/CampgroundList'
 import {
@@ -84,8 +83,6 @@ export default function CampgroundsPage() {
       </p>
 
       <CampgroundList campgrounds={results} />
-
-      <DonationCard />
     </div>
   )
 }
