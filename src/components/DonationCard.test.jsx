@@ -16,7 +16,7 @@ describe('DonationCard', () => {
   it('renders heading and donation options', () => {
     render(<DonationCard />)
 
-    expect(screen.getByRole('heading', { name: /Enjoying CampScout.ai/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Support CampScout.ai/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '$5' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '$10' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '$25' })).toBeInTheDocument()

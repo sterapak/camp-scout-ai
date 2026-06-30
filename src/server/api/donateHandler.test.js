@@ -8,10 +8,10 @@ import {
   validateDonateRequestBody,
 } from './donateHandler.js'
 import {
-  CAMP_SCOUT_PUBLIC_URL_ENV,
-  STRIPE_PRICE_ID_10_ENV,
-  STRIPE_PRICE_ID_25_ENV,
-  STRIPE_PRICE_ID_5_ENV,
+  APP_URL_ENV,
+  STRIPE_PRICE_10_ENV,
+  STRIPE_PRICE_25_ENV,
+  STRIPE_PRICE_5_ENV,
   STRIPE_SECRET_KEY_ENV,
 } from '../stripe/stripeConfig.js'
 
@@ -47,7 +47,7 @@ describe('handleDonateRequest', () => {
 
   it('returns 503 when Stripe is not configured', async () => {
     delete process.env[STRIPE_SECRET_KEY_ENV]
-    delete process.env[STRIPE_PRICE_ID_5_ENV]
+    delete process.env[STRIPE_PRICE_5_ENV]
 
     const response = await handleDonateRequest({ amount: 5 })
 
@@ -57,8 +57,8 @@ describe('handleDonateRequest', () => {
 
   it('returns 500 when checkout base URL cannot be resolved', async () => {
     process.env[STRIPE_SECRET_KEY_ENV] = 'sk_test_example'
-    process.env[STRIPE_PRICE_ID_5_ENV] = 'price_5'
-    delete process.env[CAMP_SCOUT_PUBLIC_URL_ENV]
+    process.env[STRIPE_PRICE_5_ENV] = 'price_5'
+    delete process.env[APP_URL_ENV]
 
     const response = await handleDonateRequest({ amount: 5 })
 
@@ -68,8 +68,8 @@ describe('handleDonateRequest', () => {
 
   it('creates a checkout session and returns the redirect URL', async () => {
     process.env[STRIPE_SECRET_KEY_ENV] = 'sk_test_example'
-    process.env[STRIPE_PRICE_ID_10_ENV] = 'price_10'
-    process.env[CAMP_SCOUT_PUBLIC_URL_ENV] = 'https://campscout.example.com'
+    process.env[STRIPE_PRICE_10_ENV] = 'price_10'
+    process.env[APP_URL_ENV] = 'https://campscout.example.com'
 
     const stripeClient = {
       checkout: {
@@ -97,9 +97,9 @@ describe('handleDonateRequest', () => {
 
   it('maps each amount to the correct price ID', async () => {
     process.env[STRIPE_SECRET_KEY_ENV] = 'sk_test_example'
-    process.env[STRIPE_PRICE_ID_5_ENV] = 'price_5'
-    process.env[STRIPE_PRICE_ID_25_ENV] = 'price_25'
-    process.env[CAMP_SCOUT_PUBLIC_URL_ENV] = 'https://campscout.example.com'
+    process.env[STRIPE_PRICE_5_ENV] = 'price_5'
+    process.env[STRIPE_PRICE_25_ENV] = 'price_25'
+    process.env[APP_URL_ENV] = 'https://campscout.example.com'
 
     const stripeClient = {
       checkout: {
@@ -120,8 +120,8 @@ describe('handleDonateRequest', () => {
 
   it('returns 502 when Stripe throws', async () => {
     process.env[STRIPE_SECRET_KEY_ENV] = 'sk_test_example'
-    process.env[STRIPE_PRICE_ID_5_ENV] = 'price_5'
-    process.env[CAMP_SCOUT_PUBLIC_URL_ENV] = 'https://campscout.example.com'
+    process.env[STRIPE_PRICE_5_ENV] = 'price_5'
+    process.env[APP_URL_ENV] = 'https://campscout.example.com'
 
     const stripeClient = {
       checkout: {
@@ -137,10 +137,10 @@ describe('handleDonateRequest', () => {
     expect(response.body.error).toBe('Payment provider request failed. Please try again.')
   })
 
-  it('uses request origin when public URL is not configured', async () => {
+  it('uses request origin when APP_URL is not configured', async () => {
     process.env[STRIPE_SECRET_KEY_ENV] = 'sk_test_example'
-    process.env[STRIPE_PRICE_ID_5_ENV] = 'price_5'
-    delete process.env[CAMP_SCOUT_PUBLIC_URL_ENV]
+    process.env[STRIPE_PRICE_5_ENV] = 'price_5'
+    delete process.env[APP_URL_ENV]
 
     const stripeClient = {
       checkout: {

@@ -37,7 +37,7 @@ export default function DonationCard() {
         <div className="flex-1 space-y-3">
           <div>
             <h2 id="donation-heading" className="text-lg font-semibold text-gray-900">
-              Enjoying CampScout.ai?
+              Support CampScout.ai
             </h2>
             <p className="mt-1 text-sm text-gray-600">
               CampScout.ai is free to use. If it helped you find a campsite, consider supporting

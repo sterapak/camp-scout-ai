@@ -208,7 +208,7 @@ describe('createAskRouteMiddleware', () => {
 
   it('handles POST /api/donate without API token protection', async () => {
     delete process.env.STRIPE_SECRET_KEY
-    delete process.env.STRIPE_PRICE_ID_5
+    delete process.env.STRIPE_PRICE_5
 
     const middleware = createAskRouteMiddleware({ answerProvider: fakeAnswerProvider })
     const req = createMockRequest({
