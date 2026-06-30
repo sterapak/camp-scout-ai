@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { FiBookOpen, FiCompass, FiMenu, FiSettings } from 'react-icons/fi'
 import SupportMenu from './SupportMenu'
 import ThemeToggle from './ThemeToggle'
+import DonationAcknowledgment from './DonationAcknowledgment'
 import { HEADER_SECONDARY_BUTTON_CLASS } from './headerButtonStyles'
 
 function HeaderSeparator() {
@@ -76,6 +77,7 @@ export default function AppShell({ children }) {
               aria-label="Application controls"
               className="flex flex-wrap items-center gap-2 sm:gap-3"
             >
+              <DonationAcknowledgment />
               <ThemeToggle />
               <HeaderSeparator />
               <SupportMenu />
