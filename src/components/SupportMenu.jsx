@@ -113,9 +113,8 @@ export default function SupportMenu() {
                 Support CampScout.ai
               </h2>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                CampScout.ai is completely free to use. If CampScout.ai helped you discover a
-                campsite, please consider supporting hosting, campground data, and future
-                development.
+                CampScout.ai is free for everyone. Your support helps cover hosting, campground
+                data, and future improvements.
               </p>
             </div>
 
