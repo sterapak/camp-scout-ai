@@ -3,8 +3,8 @@
 # Secrets:
 #   fly secrets set CAMP_SCOUT_API_TOKEN=...
 #   fly secrets set AI_ENABLED=true OPENAI_ANSWER_PROVIDER=openai OPENAI_API_KEY=... OPENAI_MODEL=gpt-4o-mini
-#   fly secrets set STRIPE_SECRET_KEY=... STRIPE_PRICE_ID_5=... STRIPE_PRICE_ID_10=... STRIPE_PRICE_ID_25=...
-#   fly secrets set CAMP_SCOUT_PUBLIC_URL=https://campscout.terapak.com
+#   fly secrets set STRIPE_SECRET_KEY=... STRIPE_PUBLISHABLE_KEY=... STRIPE_PRICE_5=... STRIPE_PRICE_10=... STRIPE_PRICE_25=...
+#   fly secrets set APP_URL=https://campscout.terapak.com
 
 app = 'campscout'
 primary_region = 'ord'
