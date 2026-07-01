@@ -6,14 +6,6 @@ import ThemeToggle from './ThemeToggle'
 import DonationAcknowledgment from './DonationAcknowledgment'
 import { HEADER_SECONDARY_BUTTON_CLASS } from './headerButtonStyles'
 
-function HeaderSeparator() {
-  return (
-    <span aria-hidden="true" className="hidden text-gray-300 dark:text-gray-600 sm:inline">
-      •
-    </span>
-  )
-}
-
 export default function AppShell({ children }) {
   return (
     <div className="flex h-screen">
@@ -70,22 +62,24 @@ export default function AppShell({ children }) {
       </aside>
 
       <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-950">
-        <header className="h-auto min-h-16 border-b bg-white px-4 py-3 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:px-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <header className="flex h-16 items-center border-b bg-white px-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:px-6">
+          <div className="flex w-full items-center justify-between gap-4">
             <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Camp Scout AI</h1>
             <nav
               aria-label="Application controls"
-              className="flex flex-wrap items-center gap-2 sm:gap-3"
+              className="flex shrink-0 items-center gap-1.5 sm:gap-2"
             >
               <DonationAcknowledgment />
               <ThemeToggle />
-              <HeaderSeparator />
               <SupportMenu />
-              <HeaderSeparator />
               <NavLink
                 to="/settings"
                 className={({ isActive }) =>
-                  `${HEADER_SECONDARY_BUTTON_CLASS}${isActive ? ' bg-green-50 dark:bg-gray-800' : ''}`
+                  `${HEADER_SECONDARY_BUTTON_CLASS}${
+                    isActive
+                      ? ' border-gray-300 bg-gray-50 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100'
+                      : ''
+                  }`
                 }
               >
                 Settings

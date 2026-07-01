@@ -18,6 +18,7 @@ export default function SupportMenu() {
 
   const closeMenu = useCallback(() => {
     setOpen(false)
+    setError('')
   }, [])
 
   const toggleMenu = useCallback(() => {
@@ -54,7 +55,7 @@ export default function SupportMenu() {
   async function handleDonate(amount) {
     setError('')
     setLoadingAmount(amount)
-    closeMenu()
+    setOpen(true)
 
     try {
       const { url } = await postDonate(amount)
@@ -64,6 +65,7 @@ export default function SupportMenu() {
         err instanceof Error ? err.message : 'Unable to start checkout. Please try again.'
       setError(message)
       setLoadingAmount(null)
+      setOpen(true)
     }
   }
 
@@ -137,14 +139,14 @@ export default function SupportMenu() {
                 </li>
               ))}
             </ul>
+
+            {error ? (
+              <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+                {error}
+              </p>
+            ) : null}
           </div>
         </div>
-      ) : null}
-
-      {error ? (
-        <p role="alert" className="absolute right-0 top-full z-40 mt-1 w-72 text-xs text-red-600">
-          {error}
-        </p>
       ) : null}
     </div>
   )
