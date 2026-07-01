@@ -1,8 +1,13 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { FiCheckCircle } from 'react-icons/fi'
+import { markDonationAcknowledged } from '../utils/donationAcknowledgment'
 
 export default function DonationSuccessPage() {
+  useEffect(() => {
+    markDonationAcknowledged()
+  }, [])
+
   return (
     <div className="mx-auto max-w-lg space-y-4 text-center">
       <FiCheckCircle className="mx-auto text-green-600" size={48} aria-hidden="true" />

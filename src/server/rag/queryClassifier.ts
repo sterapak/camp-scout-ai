@@ -146,20 +146,32 @@ function formatCampgroundList(campgroundNames) {
   return `${leadingNames}, and ${lastName}`
 }
 
+export type PriceGuardrailOptions = {
+  isPriceQuestion?: boolean
+  isCheapestQuestion?: boolean
+}
+
 /**
  * Returns additional system-prompt rules for a classified query category.
  * @param {QueryCategory} category
  * @param {string[]} campgroundNames
+ * @param {PriceGuardrailOptions} [options]
  * @returns {string[]}
  */
-export function buildCapabilityGuardrailRules(category, campgroundNames = []) {
+export function buildCapabilityGuardrailRules(
+  category: QueryCategory,
+  campgroundNames: string[] = [],
+  options: PriceGuardrailOptions = {},
+) {
+  const priceRules = options.isPriceQuestion ? buildPriceGuardrailRules(options.isCheapestQuestion) : []
+
   switch (category) {
     case QUERY_CATEGORY_COMPARISON:
-      return buildComparisonGuardrailRules(campgroundNames)
+      return [...buildComparisonGuardrailRules(campgroundNames), ...priceRules]
     case QUERY_CATEGORY_RECOMMENDATION:
-      return buildRecommendationGuardrailRules()
+      return [...buildRecommendationGuardrailRules(), ...priceRules]
     default:
-      return []
+      return priceRules
   }
 }
 
@@ -194,4 +206,27 @@ function buildRecommendationGuardrailRules() {
     'If the user did not state preferences, explain tradeoffs using official facts and note that review ratings are not available.',
     'Never claim a campground is the "best" based on quality or reviews — only match stated preferences to official facts you can cite.',
   ]
+}
+
+/**
+ * @param {boolean} [isCheapestQuestion]
+ * @returns {string[]}
+ */
+export function buildPriceGuardrailRules(isCheapestQuestion = false) {
+  const rules = [
+    'This question asks about campground pricing or fees.',
+    'Use ONLY fee amounts explicitly present in the retrieved context or verified pricing extraction section.',
+    'Never invent, estimate, or infer campground prices, nightly rates, or fees that are not stated in the sources.',
+    'Distinguish camping/site fees from day-use, parking, vehicle, or penalty fees when both appear.',
+    'Cite the official source organization for every pricing statement.',
+  ]
+
+  if (isCheapestQuestion) {
+    rules.push(
+      'Only identify the cheapest campground when verified camping/site fees are available for multiple campgrounds in the verified pricing extraction section.',
+      'If verified camping fees are missing for most campgrounds, explain that official pricing data is incomplete instead of guessing.',
+    )
+  }
+
+  return rules
 }

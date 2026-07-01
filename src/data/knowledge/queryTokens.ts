@@ -64,7 +64,13 @@ export function getMeaningfulQueryTokens(query) {
 /**
  * Detects simple question intent from a user query.
  * @param {string} query
- * @returns {{ isCountQuestion: boolean, mentionsCampsites: boolean, mentionsCampgrounds: boolean }}
+ * @returns {{
+ *   isCountQuestion: boolean,
+ *   mentionsCampsites: boolean,
+ *   mentionsCampgrounds: boolean,
+ *   isPriceQuestion: boolean,
+ *   isCheapestQuestion: boolean,
+ * }}
  */
 export function getQueryIntent(query) {
   const normalized = query.trim().toLowerCase()
@@ -73,7 +79,29 @@ export function getQueryIntent(query) {
     isCountQuestion: /\bhow many\b|\bnumber of\b|\bcount of\b/.test(normalized),
     mentionsCampsites: /\bcampsites?\b|\bcamping sites?\b|\bcamp sites?\b/.test(normalized),
     mentionsCampgrounds: /\bcampgrounds?\b/.test(normalized),
+    isPriceQuestion: isPriceQuestion(normalized),
+    isCheapestQuestion: isCheapestQuestion(normalized),
   }
+}
+
+/**
+ * @param {string} normalizedQuery
+ * @returns {boolean}
+ */
+export function isPriceQuestion(normalizedQuery) {
+  return /\b(fee|fees|cost|price|pricing|rate|rates|how much|cheapest|least expensive|lowest cost|lowest price|most affordable|afford|nightly|per night)\b/i.test(
+    normalizedQuery,
+  )
+}
+
+/**
+ * @param {string} normalizedQuery
+ * @returns {boolean}
+ */
+export function isCheapestQuestion(normalizedQuery) {
+  return /\b(cheapest|least expensive|lowest cost|lowest price|most affordable|cheaper)\b/i.test(
+    normalizedQuery,
+  )
 }
 
 /**

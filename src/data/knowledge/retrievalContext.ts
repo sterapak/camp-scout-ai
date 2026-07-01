@@ -52,10 +52,12 @@ export function buildRetrievalContext({
   question = '',
   results = [],
   maxContextTokens,
+  pricingSection = '',
 }: {
   question?: string
   results?: RetrievalResult[]
   maxContextTokens?: number
+  pricingSection?: string
 } = {}): RetrievalContext {
   const trimmedQuestion = question.trim()
 
@@ -91,6 +93,7 @@ export function buildRetrievalContext({
     'The following official campground knowledge may help answer the question:',
     '',
     contextBlocks.join('\n\n---\n\n'),
+    pricingSection ? `\n\n---\n\n${pricingSection}` : null,
   ]
     .filter((line) => line !== null)
     .join('\n')
