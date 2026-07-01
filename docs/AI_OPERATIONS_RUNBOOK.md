@@ -100,7 +100,7 @@ Each `[AI request]` log includes: timestamp, endpoint, requestId, correlationId,
 - [ ] `GET /metrics` returning Prometheus data
 - [ ] Kill switch tested (`AI_ENABLED=false` → fake provider)
 - [ ] Maintenance mode tested (`AI_MAINTENANCE_MODE=true` → 503)
-- [ ] CI passing (`npm test`)
+- [ ] Local verification passing (`./scripts/verify.sh`)
 - [ ] Lint passing (`npm run lint`)
 - [ ] Review `docs/AI_PRODUCTION_READINESS.md`
 

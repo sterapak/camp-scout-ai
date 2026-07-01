@@ -17,7 +17,7 @@ Comprehensive review of Camp Scout AI operational readiness before public releas
 | Maintenance mode operational | ✅ Pass | `AI_MAINTENANCE_MODE=true` returns 503 on AI endpoints; `/health` unaffected |
 | Logging operational | ✅ Pass | Structured `[AI request]` logs with correlation IDs; no prompts or secrets |
 | Metrics operational | ✅ Pass | `GET /metrics` exposes Prometheus-compatible counters and gauges |
-| CI passing | ✅ Pass | `npm test` with Jest coverage |
+| Local verification passing | ✅ Pass | `./scripts/verify.sh` (typecheck, lint, test, build) |
 | Type checking | ✅ Pass | `npm run typecheck` (`tsc --noEmit`) |
 | Security review | ✅ Pass | API keys never logged; timing-safe token comparison; server-only OpenAI modules |
 

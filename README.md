@@ -69,7 +69,7 @@ Configuration (`tsconfig.json`):
 
 ## Project Verification
 
-Run all available quality checks and a production build with one command:
+Quality checks run locally via `./scripts/verify.sh` — there is no GitHub Actions CI pipeline. Run all available checks and a production build with one command:
 
 ```bash
 ./scripts/verify.sh
