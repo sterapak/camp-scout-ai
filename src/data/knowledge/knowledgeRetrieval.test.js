@@ -86,4 +86,33 @@ describe('knowledgeRetrieval', () => {
     expect(results.length).toBeGreaterThan(0)
     expect(results.every((result) => result.document.campgroundId === 'silver-lake-west')).toBe(true)
   })
+
+  it('prioritizes reservation documents with camping fees for price questions', () => {
+    const results = retrieveDocuments({
+      query: 'What is the site fee at Ice House Campground?',
+      limit: 5,
+    })
+
+    expect(results.length).toBeGreaterThan(0)
+    expect(results[0].document.documentType).toBe('reservation')
+    expect(results[0].document.content).toMatch(/Single site fee is \$36/)
+  })
+
+  it('does not boost description documents above reservation docs for cheapest campground questions', () => {
+    const results = retrieveDocuments({
+      query: 'What is the cheapest campground?',
+      limit: 5,
+    })
+
+    const topReservationIndex = results.findIndex(
+      (result) => result.document.documentType === 'reservation',
+    )
+    const topDescriptionIndex = results.findIndex(
+      (result) => result.document.documentType === 'description',
+    )
+
+    if (topReservationIndex !== -1 && topDescriptionIndex !== -1) {
+      expect(topReservationIndex).toBeLessThan(topDescriptionIndex)
+    }
+  })
 })

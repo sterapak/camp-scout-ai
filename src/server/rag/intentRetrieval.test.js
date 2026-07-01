@@ -5,7 +5,7 @@ import {
   applyIntentBoosts,
   retrieveDocumentsWithIntent,
 } from './intentRetrieval.js'
-import { QUERY_CATEGORY_COMPARISON } from './queryClassifier.js'
+import { QUERY_CATEGORY_COMPARISON, QUERY_CATEGORY_FACTUAL } from './queryClassifier.js'
 
 describe('intentRetrieval', () => {
   it('boosts comparison-relevant document types for comparison questions', () => {
@@ -31,5 +31,19 @@ describe('intentRetrieval', () => {
 
     expect(results.length).toBeGreaterThan(0)
     expect(results.length).toBeLessThanOrEqual(3)
+  })
+
+  it('boosts reservation documents for pricing questions', () => {
+    const results = retrieveDocuments({ query: 'What are the camping fees?', limit: 8 })
+    const boosted = applyIntentBoosts(results, QUERY_CATEGORY_FACTUAL, 'What are the camping fees?')
+
+    const reservationBoost = boosted.find(
+      (result) => result.document.documentType === 'reservation',
+    )?.relevanceScore ?? 0
+    const originalReservation = results.find(
+      (result) => result.document.documentType === 'reservation',
+    )?.relevanceScore ?? 0
+
+    expect(reservationBoost).toBeGreaterThan(originalReservation)
   })
 })

@@ -21,7 +21,26 @@ describe('queryTokens', () => {
       isCountQuestion: true,
       mentionsCampsites: true,
       mentionsCampgrounds: false,
+      isPriceQuestion: false,
+      isCheapestQuestion: false,
     })
+  })
+
+  it('detects pricing and cheapest intent', () => {
+    expect(getQueryIntent('What is the cheapest campground?')).toEqual({
+      isCountQuestion: false,
+      mentionsCampsites: false,
+      mentionsCampgrounds: true,
+      isPriceQuestion: true,
+      isCheapestQuestion: true,
+    })
+
+    expect(getQueryIntent('What are the nightly camping fees at Ice House?')).toEqual(
+      expect.objectContaining({
+        isPriceQuestion: true,
+        isCheapestQuestion: false,
+      }),
+    )
   })
 
   it('requires exact matches for short tokens', () => {

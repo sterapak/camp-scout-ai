@@ -17,6 +17,15 @@ import type {
 } from '../../shared/types/api.js'
 import type { RetrievalContextSource } from '../../data/knowledge/retrievalContext.js'
 import { buildRetrievalContext } from '../../data/knowledge/retrievalContext.js'
+import {
+  buildVerifiedPricingPromptSection,
+  extractCampgroundPricingFromResults,
+  hasSufficientPricingForCheapestComparison,
+  INSUFFICIENT_PRICING_COMPARISON_MESSAGE,
+  rankCampgroundsByCampingFee,
+  sortResultsForPriceQuestion,
+} from '../../data/knowledge/campgroundPricing.js'
+import { getQueryIntent } from '../../data/knowledge/queryTokens.js'
 import { createAnswerProvider } from '../openai/createAnswerProvider.js'
 import { DEFAULT_MAX_OUTPUT_TOKENS } from '../openai/answerProvider.js'
 import { logOpenAiDiagnostic } from '../openai/logOpenAiDiagnostic.js'
@@ -41,6 +50,7 @@ import {
   buildCapabilityGuardrailRules,
   classifyQuery,
 } from './queryClassifier.js'
+import type { PriceGuardrailOptions } from './queryClassifier.js'
 
 export const DEFAULT_TOP_DOCUMENT_COUNT = 3
 export const GROUNDED_ANSWER_MAX_OUTPUT_TOKENS = DEFAULT_MAX_OUTPUT_TOKENS
@@ -81,10 +91,11 @@ export interface GenerateGroundedAnswerOptions {
  * @returns {string}
  */
 export function buildGroundedAnswerInstructions(
-  sourceCount,
-  queryCategory,
-  campgroundNames = [],
-  sources = [],
+  sourceCount: number,
+  queryCategory?: import('./queryClassifier.js').QueryCategory,
+  campgroundNames: string[] = [],
+  sources: RetrievalContextSource[] = [],
+  priceOptions: PriceGuardrailOptions = {},
 ) {
   const organizationExamples = sources
     .slice(0, 3)
@@ -111,7 +122,10 @@ export function buildGroundedAnswerInstructions(
     '10. Do not include a generic "Sources:" list at the end — source links are shown separately in the UI.',
   ]
 
-  const guardrailRules = buildCapabilityGuardrailRules(queryCategory ?? 'factual', campgroundNames)
+  const guardrailRules = buildCapabilityGuardrailRules(queryCategory ?? 'factual', campgroundNames, {
+    isPriceQuestion: priceOptions.isPriceQuestion === true,
+    isCheapestQuestion: priceOptions.isCheapestQuestion === true,
+  })
 
   if (guardrailRules.length === 0) {
     return baseRules.join('\n')
@@ -216,6 +230,7 @@ export async function generateGroundedAnswer({
   }
 
   const queryClassification = classifyQuery(trimmedQuestion)
+  const queryIntent = getQueryIntent(trimmedQuestion)
 
   if (queryClassification.shouldShortCircuit && queryClassification.shortCircuitMessage) {
     return buildGuardrailAnswerResponse(queryClassification.shortCircuitMessage)
@@ -236,16 +251,39 @@ export async function generateGroundedAnswer({
     resultCount: results.length,
   })
 
-  const relevantResults = filterRelevantResults(results)
+  let relevantResults = filterRelevantResults(results)
+
+  if (queryIntent.isPriceQuestion) {
+    relevantResults = sortResultsForPriceQuestion(relevantResults)
+  }
 
   if (relevantResults.length === 0) {
     return buildInsufficientContextResponse()
   }
 
+  const pricingRecords = queryIntent.isPriceQuestion
+    ? extractCampgroundPricingFromResults(relevantResults)
+    : []
+  const rankedCampgrounds = queryIntent.isCheapestQuestion
+    ? rankCampgroundsByCampingFee(pricingRecords)
+    : []
+
+  if (
+    queryIntent.isCheapestQuestion
+    && !hasSufficientPricingForCheapestComparison(rankedCampgrounds)
+  ) {
+    return buildInsufficientContextResponse(INSUFFICIENT_PRICING_COMPARISON_MESSAGE)
+  }
+
+  const pricingSection = queryIntent.isPriceQuestion
+    ? buildVerifiedPricingPromptSection(pricingRecords, rankedCampgrounds)
+    : ''
+
   const context = buildRetrievalContext({
     question: trimmedQuestion,
     results: relevantResults,
     maxContextTokens,
+    pricingSection,
   })
 
   const providerInstance = answerProvider ?? createAnswerProvider({
@@ -266,9 +304,13 @@ export async function generateGroundedAnswer({
   const generationResult = await providerInstance.generateAnswer({
     instructions: buildGroundedAnswerInstructions(
       context.sourceCount,
-      queryClassification.category,
+      queryClassification.category as import('./queryClassifier.js').QueryCategory,
       queryClassification.campgroundNames,
       context.sources,
+      {
+        isPriceQuestion: queryIntent.isPriceQuestion,
+        isCheapestQuestion: queryIntent.isCheapestQuestion,
+      },
     ),
     input: context.promptContext,
     maxOutputTokens: resolvedMaxOutputTokens,

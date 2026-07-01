@@ -92,6 +92,31 @@ export function scoreDocument(document, query, campgroundId = '') {
     score += 20
   }
 
+  if (queryIntent.isPriceQuestion) {
+    if (document.documentType === 'reservation') {
+      score += 35
+    } else if (document.documentType === 'rules') {
+      score += 18
+    } else if (document.documentType === 'description') {
+      score -= 12
+    }
+
+    if (
+      /\$\d+/.test(contentLower)
+      && /\b(site fee|single site|double site|nightly|per night|camping fee|camp fee)\b/i.test(contentLower)
+    ) {
+      score += 28
+    }
+
+    if (
+      document.documentType === 'rules'
+      && /\$\d{3,}/.test(contentLower)
+      && /\b(fine|penalty)\b/i.test(contentLower)
+    ) {
+      score -= 25
+    }
+  }
+
   return score
 }
 

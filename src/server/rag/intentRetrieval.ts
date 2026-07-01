@@ -13,6 +13,8 @@ import {
 
 /** @typedef {import('./queryClassifier.js').QueryCategory} QueryCategory */
 
+const CHEAPEST_QUESTION_RETRIEVAL_LIMIT = 15
+
 /**
  * Maps query categories to document types that should rank higher during retrieval.
  * @type {Record<QueryCategory, string[]>}
@@ -49,6 +51,16 @@ export function applyIntentBoosts(results, queryCategory, query = '') {
         boostedScore += 5
       }
 
+      if (queryIntent.isPriceQuestion) {
+        if (result.document.documentType === 'reservation') {
+          boostedScore += INTENT_BOOST_SCORE + 10
+        } else if (result.document.documentType === 'rules') {
+          boostedScore += INTENT_BOOST_SCORE + 4
+        } else if (result.document.documentType === 'description') {
+          boostedScore -= 10
+        }
+      }
+
       return {
         ...result,
         relevanceScore: boostedScore,
@@ -72,9 +84,19 @@ export function retrieveDocumentsWithIntent({
   limit = 20,
   queryCategory = QUERY_CATEGORY_FACTUAL,
 }: RetrieveDocumentsWithIntentOptions = {}) {
-  const results = retrieveDocuments({ query, campgroundId, documentType, limit: limit * 2 })
+  const queryIntent = getQueryIntent(query ?? '')
+  const effectiveLimit = queryIntent.isCheapestQuestion
+    ? Math.max(limit, CHEAPEST_QUESTION_RETRIEVAL_LIMIT)
+    : limit
+
+  const results = retrieveDocuments({
+    query,
+    campgroundId,
+    documentType,
+    limit: effectiveLimit * 2,
+  })
   const boosted = applyIntentBoosts(results, queryCategory, query)
-  return boosted.slice(0, limit)
+  return boosted.slice(0, effectiveLimit)
 }
 
 /**

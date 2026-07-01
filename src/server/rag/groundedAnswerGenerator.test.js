@@ -46,6 +46,17 @@ describe('groundedAnswerGenerator helpers', () => {
     expect(instructions).toContain('Do NOT invent review ratings')
   })
 
+  it('adds price guardrails to instructions', () => {
+    const instructions = buildGroundedAnswerInstructions(2, 'factual', [], [], {
+      isPriceQuestion: true,
+      isCheapestQuestion: true,
+    })
+
+    expect(instructions).toContain('Capability guardrails:')
+    expect(instructions).toContain('Never invent, estimate, or infer campground prices')
+    expect(instructions).toContain('cheapest campground')
+  })
+
   it('maps retrieval sources to citation metadata', () => {
     const citation = toGroundedAnswerCitation({
       id: 'doc-1',
@@ -273,5 +284,38 @@ describe('generateGroundedAnswer', () => {
     const request = generateAnswer.mock.calls[0][0]
     expect(request.instructions).toContain('recommendation question')
     expect(request.instructions).toContain('Do NOT invent review ratings')
+  })
+
+  it('returns an honest insufficient-context response for cheapest campground questions without enough verified pricing', async () => {
+    const generateAnswer = jest.fn()
+
+    const result = await generateGroundedAnswer({
+      question: 'What is the cheapest campground?',
+      answerProvider: { name: 'fake', generateAnswer },
+    })
+
+    expect(result.status).toBe('insufficient_context')
+    expect(result.message).toContain('do not include enough verified nightly camping fees')
+    expect(generateAnswer).not.toHaveBeenCalled()
+  })
+
+  it('passes verified reservation pricing context for campground fee questions', async () => {
+    const generateAnswer = jest.fn(async () => ({
+      text: 'According to the U.S. Forest Service, the single site fee is $36.',
+      model: 'fake-model',
+      inputTokens: 10,
+      outputTokens: 5,
+    }))
+
+    await generateGroundedAnswer({
+      question: 'What is the site fee at Ice House Campground?',
+      answerProvider: { name: 'fake', generateAnswer },
+    })
+
+    const request = generateAnswer.mock.calls[0][0]
+    expect(request.input).toContain('Verified pricing extracted from official sources')
+    expect(request.input).toContain('$36.00')
+    expect(request.input).toContain('Reservation Information')
+    expect(request.instructions).toContain('Never invent, estimate, or infer campground prices')
   })
 })
