@@ -5,4 +5,4 @@ export const HEADER_NEUTRAL_BUTTON_CLASS =
   `${HEADER_TOOLBAR_BUTTON_BASE} border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300`
 
 export const HEADER_SUPPORT_BUTTON_CLASS =
-  `${HEADER_TOOLBAR_BUTTON_BASE} border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/40 dark:text-gray-300`
+  `${HEADER_TOOLBAR_BUTTON_BASE} border-green-100/55 bg-[#f8faf9] dark:border-green-900/30 dark:bg-gray-800 dark:text-gray-300`
