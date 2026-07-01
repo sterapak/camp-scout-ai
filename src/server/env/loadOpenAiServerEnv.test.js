@@ -79,4 +79,39 @@ describe('loadOpenAiServerEnv', () => {
       process.chdir(originalCwd)
     }
   })
+
+  it('loads STRIPE_* and APP_URL values from .env.local', () => {
+    delete process.env.STRIPE_SECRET_KEY
+    delete process.env.STRIPE_PRICE_5
+    delete process.env.APP_URL
+
+    fs.writeFileSync(
+      path.join(tempDir, '.env.local'),
+      [
+        'STRIPE_SECRET_KEY=sk_test_file_key',
+        'STRIPE_PRICE_5=price_test_5',
+        'APP_URL=http://localhost:5173',
+      ].join('\n'),
+      'utf8',
+    )
+
+    const originalCwd = process.cwd()
+    process.chdir(tempDir)
+
+    try {
+      const loaded = loadOpenAiServerEnv('development')
+
+      expect(loaded.STRIPE_SECRET_KEY).toBe('sk_test_file_key')
+      expect(loaded.STRIPE_PRICE_5).toBe('price_test_5')
+      expect(loaded.APP_URL).toBe('http://localhost:5173')
+      expect(process.env.STRIPE_SECRET_KEY).toBe('sk_test_file_key')
+      expect(process.env.STRIPE_PRICE_5).toBe('price_test_5')
+      expect(process.env.APP_URL).toBe('http://localhost:5173')
+    } finally {
+      process.chdir(originalCwd)
+      delete process.env.STRIPE_SECRET_KEY
+      delete process.env.STRIPE_PRICE_5
+      delete process.env.APP_URL
+    }
+  })
 })

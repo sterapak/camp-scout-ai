@@ -1,0 +1,2 @@
+export const HEADER_SECONDARY_BUTTON_CLASS =
+  'inline-flex items-center justify-center gap-1 rounded-lg border border-green-700 bg-white px-3 py-1.5 text-sm font-medium text-green-800 hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-white dark:border-green-600 dark:bg-gray-900 dark:text-green-300 dark:hover:bg-gray-800'
