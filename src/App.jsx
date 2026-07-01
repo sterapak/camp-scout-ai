@@ -7,6 +7,7 @@ import SettingsPage from './pages/SettingsPage'
 import RetrievalPlaygroundPage from './pages/RetrievalPlaygroundPage'
 import DonationSuccessPage from './pages/DonationSuccessPage'
 import DonationCancelPage from './pages/DonationCancelPage'
+import SupportPage from './pages/SupportPage'
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
 
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/campgrounds/:id" element={<CampgroundDetailPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/retrieval" element={<RetrievalPlaygroundPage />} />
+          <Route path="/support" element={<SupportPage />} />
           <Route path="/donation-success" element={<DonationSuccessPage />} />
           <Route path="/donation-cancel" element={<DonationCancelPage />} />
         </Routes>

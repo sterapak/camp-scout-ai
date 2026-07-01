@@ -5,8 +5,10 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "build:fly": "CAMP_SCOUT_BASE=/ BUILD_OUT_DIR=dist vite build",
+    "build": "vite build && node scripts/generate-sitemap.mjs",
+    "build:fly": "CAMP_SCOUT_BASE=/ BUILD_OUT_DIR=dist vite build && node scripts/generate-sitemap.mjs",
+    "generate:sitemap": "node scripts/generate-sitemap.mjs",
+    "generate:terapak-sitemap": "node scripts/generate-terapak-sitemap.mjs",
     "preview": "vite preview",
     "start": "node server/production.mjs",
     "lint": "eslint src --ext .js --ext .jsx",
