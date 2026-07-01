@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /settings
+Disallow: /donation-success
+Disallow: /donation-cancel
+Disallow: /api/
+
+Sitemap: https://campscout.terapak.com/sitemap.xml
