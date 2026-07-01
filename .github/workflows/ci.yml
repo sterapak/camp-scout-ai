@@ -31,3 +31,10 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Verify sitemap generation
+        run: |
+          test -f docs/sitemap.xml
+          test -f docs/robots.txt
+          grep -q 'camp-scout-ai/campgrounds' docs/sitemap.xml
+          grep -q 'Sitemap:' docs/robots.txt
