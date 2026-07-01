@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { FiChevronDown } from 'react-icons/fi'
 import { postDonate } from '../api/donateClient'
-import { HEADER_SECONDARY_BUTTON_CLASS } from './headerButtonStyles'
+import { HEADER_SUPPORT_BUTTON_CLASS } from './headerButtonStyles'
 
 const DONATION_OPTIONS = [
   { amount: 5, emoji: '☕', label: '$5 — Buy me a coffee' },
@@ -87,7 +87,7 @@ export default function SupportMenu() {
     <div ref={containerRef} className="relative">
       <button
         type="button"
-        className={HEADER_SECONDARY_BUTTON_CLASS}
+        className={HEADER_SUPPORT_BUTTON_CLASS}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}

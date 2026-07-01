@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { HEADER_SECONDARY_BUTTON_CLASS } from './headerButtonStyles'
+import { HEADER_NEUTRAL_BUTTON_CLASS } from './headerButtonStyles'
 
 const THEME_STORAGE_KEY = 'camp-scout-theme'
 
@@ -48,7 +48,7 @@ export default function ThemeToggle() {
   return (
     <button
       type="button"
-      className={HEADER_SECONDARY_BUTTON_CLASS}
+      className={HEADER_NEUTRAL_BUTTON_CLASS}
       onClick={toggleTheme}
       onKeyDown={handleKeyDown}
       aria-label={`Current theme: ${label}. Activate to switch theme.`}

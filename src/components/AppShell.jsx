@@ -4,7 +4,7 @@ import { FiBookOpen, FiCompass, FiMenu, FiSettings } from 'react-icons/fi'
 import SupportMenu from './SupportMenu'
 import ThemeToggle from './ThemeToggle'
 import DonationAcknowledgment from './DonationAcknowledgment'
-import { HEADER_SECONDARY_BUTTON_CLASS } from './headerButtonStyles'
+import { HEADER_NEUTRAL_BUTTON_CLASS } from './headerButtonStyles'
 
 export default function AppShell({ children }) {
   return (
@@ -75,9 +75,9 @@ export default function AppShell({ children }) {
               <NavLink
                 to="/settings"
                 className={({ isActive }) =>
-                  `${HEADER_SECONDARY_BUTTON_CLASS}${
+                  `${HEADER_NEUTRAL_BUTTON_CLASS}${
                     isActive
-                      ? ' border-gray-300 bg-gray-50 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100'
+                      ? ' border-gray-300 bg-gray-100 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100'
                       : ''
                   }`
                 }
