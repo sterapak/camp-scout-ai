@@ -32,6 +32,7 @@ import {
   type ApiAccessFailure,
 } from './apiProtection.js'
 import { handleAskRequest, INVALID_JSON_ERROR } from './askHandler.js'
+import { handleDonateRequest } from './donateHandler.js'
 import { handleSummaryRequest } from './summaryHandler.js'
 import {
   JsonBodyTooLargeError,
@@ -40,6 +41,7 @@ import {
 
 export const ASK_ROUTE_PATH = '/api/ask'
 export const SUMMARY_ROUTE_PATH = '/api/summary'
+export const DONATE_ROUTE_PATH = '/api/donate'
 export const HEALTH_ROUTE_PATH = '/health'
 export const RUNTIME_CONFIG_PATH = '/camp-scout-runtime.js'
 export const METRICS_ROUTE_PATH = '/metrics'
@@ -264,6 +266,34 @@ export function createAskRouteMiddleware(options: AskRouteMiddlewareOptions = {}
       }
 
       sendRuntimeConfigScript(res)
+      return
+    }
+
+    if (pathname === DONATE_ROUTE_PATH) {
+      if (req.method !== 'POST') {
+        res.setHeader('Allow', 'POST')
+        sendJsonResponse(res, 405, { error: 'Method not allowed. Use POST.' }, { correlationId })
+        return
+      }
+
+      try {
+        const body = await readJsonRequestBody(req)
+        const origin = typeof req.headers.origin === 'string' ? req.headers.origin : undefined
+        const response = await handleDonateRequest(body, { requestOrigin: origin })
+        sendJsonResponse(res, response.statusCode, response.body, { correlationId })
+      } catch (error) {
+        if (error instanceof JsonBodyTooLargeError) {
+          sendJsonResponse(res, 413, { error: error.message }, { correlationId })
+          return
+        }
+
+        if (error instanceof SyntaxError) {
+          sendJsonResponse(res, 400, { error: INVALID_JSON_ERROR }, { correlationId })
+          return
+        }
+
+        sendJsonResponse(res, 500, { error: 'An unexpected error occurred.' }, { correlationId })
+      }
       return
     }
 

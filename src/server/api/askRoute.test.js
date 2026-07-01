@@ -10,6 +10,7 @@ import {
 } from './apiProtection.js'
 import {
   ASK_ROUTE_PATH,
+  DONATE_ROUTE_PATH,
   HEALTH_ROUTE_PATH,
   METRICS_ROUTE_PATH,
   AI_DASHBOARD_ROUTE_PATH,
@@ -28,6 +29,7 @@ import {
   SUCCESS_STATUS,
 } from '../rag/groundedAnswerGenerator.js'
 import { EMPTY_QUESTION_ERROR } from './askHandler.js'
+import { DONATIONS_NOT_CONFIGURED_ERROR } from './donateHandler.js'
 
 function createMockResponse() {
   /** @type {{ statusCode?: number, headers: Record<string, string>, body?: string, ended: boolean }} */
@@ -202,6 +204,42 @@ describe('createAskRouteMiddleware', () => {
     const payload = JSON.parse(state.body ?? '{}')
     expect(payload.status).toBe(INSUFFICIENT_CONTEXT_STATUS)
     expect(payload.citations).toEqual([])
+  })
+
+  it('handles POST /api/donate without API token protection', async () => {
+    delete process.env.STRIPE_SECRET_KEY
+    delete process.env.STRIPE_PRICE_5
+
+    const middleware = createAskRouteMiddleware({ answerProvider: fakeAnswerProvider })
+    const req = createMockRequest({
+      url: DONATE_ROUTE_PATH,
+      headers: {},
+      body: { amount: 5 },
+    })
+    const { res, state } = createMockResponse()
+
+    await middleware(req, res, jest.fn())
+
+    expect(state.statusCode).toBe(503)
+    const payload = JSON.parse(state.body ?? '{}')
+    expect(payload.error).toBe(DONATIONS_NOT_CONFIGURED_ERROR)
+    expect(payload.correlationId).toBeDefined()
+  })
+
+  it('returns validation error for invalid donation amount', async () => {
+    const middleware = createAskRouteMiddleware({ answerProvider: fakeAnswerProvider })
+    const req = createMockRequest({
+      url: DONATE_ROUTE_PATH,
+      headers: {},
+      body: { amount: 15 },
+    })
+    const { res, state } = createMockResponse()
+
+    await middleware(req, res, jest.fn())
+
+    expect(state.statusCode).toBe(400)
+    const payload = JSON.parse(state.body ?? '{}')
+    expect(payload.error).toContain('amount')
   })
 
   it('passes through unrelated routes', async () => {
