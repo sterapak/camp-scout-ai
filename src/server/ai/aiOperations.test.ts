@@ -181,6 +181,36 @@ describe('aiUsageStore and budgets', () => {
     delete process.env.AI_DAILY_REQUEST_LIMIT
   })
 
+  it('blocks AI endpoints with 503 when AI_DAILY_BUDGET_USD is exceeded', () => {
+    process.env.AI_DAILY_BUDGET_USD = '0.001'
+
+    recordAiRequest(buildRequestRecord({
+      endpoint: '/api/ask',
+      requestId: 'req-1',
+      correlationId: 'corr-1',
+      provider: 'openai',
+      promptTokenEstimate: 500_000,
+      completionTokens: 500_000,
+      latencyMs: 10,
+      clientIp: '127.0.0.1',
+      responseStatus: 200,
+    }))
+
+    const access = checkAiEndpointAccess({
+      endpoint: '/api/ask',
+      correlationId: 'corr-block',
+      wouldUseOpenAi: true,
+    })
+
+    expect(access.blocked).toBe(true)
+    if (access.blocked) {
+      expect(access.statusCode).toBe(503)
+      expect(access.body.error).toContain('budget')
+    }
+
+    delete process.env.AI_DAILY_BUDGET_USD
+  })
+
   it('evaluates cost alerts at thresholds', () => {
     process.env.AI_DAILY_DOLLAR_LIMIT = '1'
 

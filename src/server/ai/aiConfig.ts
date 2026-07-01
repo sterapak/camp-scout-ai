@@ -10,6 +10,11 @@ export const AI_DAILY_REQUEST_LIMIT_ENV = 'AI_DAILY_REQUEST_LIMIT'
 export const AI_DAILY_INPUT_TOKEN_LIMIT_ENV = 'AI_DAILY_INPUT_TOKEN_LIMIT'
 export const AI_DAILY_OUTPUT_TOKEN_LIMIT_ENV = 'AI_DAILY_OUTPUT_TOKEN_LIMIT'
 export const AI_DAILY_DOLLAR_LIMIT_ENV = 'AI_DAILY_DOLLAR_LIMIT'
+export const AI_DAILY_BUDGET_USD_ENV = 'AI_DAILY_BUDGET_USD'
+
+export const AI_MAX_PROMPT_TOKENS_ENV = 'AI_MAX_PROMPT_TOKENS'
+export const AI_MAX_REQUEST_COST_USD_ENV = 'AI_MAX_REQUEST_COST_USD'
+export const AI_SLOW_REQUEST_MS_ENV = 'AI_SLOW_REQUEST_MS'
 
 export const AI_HOURLY_REQUEST_LIMIT_ENV = 'AI_HOURLY_REQUEST_LIMIT'
 export const AI_HOURLY_TOKEN_LIMIT_ENV = 'AI_HOURLY_TOKEN_LIMIT'
@@ -92,15 +97,39 @@ export function isAiMaintenanceMode() {
  * }}
  */
 export function resolveAiBudgetLimits() {
+  const dailyBudgetUsd = parseOptionalLimit(process.env[AI_DAILY_BUDGET_USD_ENV])
+    ?? parseOptionalLimit(process.env[AI_DAILY_DOLLAR_LIMIT_ENV])
+
   return {
     dailyRequestLimit: parseOptionalLimit(process.env[AI_DAILY_REQUEST_LIMIT_ENV]),
     dailyInputTokenLimit: parseOptionalLimit(process.env[AI_DAILY_INPUT_TOKEN_LIMIT_ENV]),
     dailyOutputTokenLimit: parseOptionalLimit(process.env[AI_DAILY_OUTPUT_TOKEN_LIMIT_ENV]),
-    dailyDollarLimit: parseOptionalLimit(process.env[AI_DAILY_DOLLAR_LIMIT_ENV]),
+    dailyDollarLimit: dailyBudgetUsd,
     hourlyRequestLimit: parseOptionalLimit(process.env[AI_HOURLY_REQUEST_LIMIT_ENV]),
     hourlyTokenLimit: parseOptionalLimit(process.env[AI_HOURLY_TOKEN_LIMIT_ENV]),
     hourlyDollarLimit: parseOptionalLimit(process.env[AI_HOURLY_DOLLAR_LIMIT_ENV]),
   }
+}
+
+/**
+ * @returns {number | undefined}
+ */
+export function resolveMaxPromptTokensThreshold() {
+  return parseOptionalLimit(process.env[AI_MAX_PROMPT_TOKENS_ENV])
+}
+
+/**
+ * @returns {number | undefined}
+ */
+export function resolveMaxRequestCostThreshold() {
+  return parseOptionalLimit(process.env[AI_MAX_REQUEST_COST_USD_ENV])
+}
+
+/**
+ * @returns {number | undefined}
+ */
+export function resolveSlowRequestMsThreshold() {
+  return parseOptionalLimit(process.env[AI_SLOW_REQUEST_MS_ENV])
 }
 
 /**

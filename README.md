@@ -138,7 +138,11 @@ Configure daily and hourly limits via environment variables. When exceeded, AI e
 | `AI_DAILY_REQUEST_LIMIT` | Max requests per UTC day |
 | `AI_DAILY_INPUT_TOKEN_LIMIT` | Max input tokens per day |
 | `AI_DAILY_OUTPUT_TOKEN_LIMIT` | Max output tokens per day |
-| `AI_DAILY_DOLLAR_LIMIT` | Max estimated spend per day |
+| `AI_DAILY_DOLLAR_LIMIT` | Max estimated spend per day (legacy alias) |
+| `AI_DAILY_BUDGET_USD` | Max estimated spend per day (preferred) |
+| `AI_MAX_PROMPT_TOKENS` | Log WARN when a request exceeds this prompt token count |
+| `AI_MAX_REQUEST_COST_USD` | Log WARN when a request exceeds this estimated cost |
+| `AI_SLOW_REQUEST_MS` | Log WARN when a request exceeds this latency |
 | `AI_HOURLY_REQUEST_LIMIT` | Max requests per UTC hour |
 | `AI_HOURLY_TOKEN_LIMIT` | Max tokens per hour |
 | `AI_HOURLY_DOLLAR_LIMIT` | Max estimated spend per hour |
