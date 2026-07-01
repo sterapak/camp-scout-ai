@@ -15,6 +15,7 @@ import {
 import { appendAuditLogEntry, auditEntryFromRecord } from './aiAuditLog.js'
 import { checkAiBudgetExceeded, logBudgetExceeded } from './aiBudget.js'
 import { evaluateCostAlerts } from './aiCostAlerts.js'
+import { evaluateRequestThresholdWarnings } from './aiRequestThresholds.js'
 import { resolveCorrelationId, CORRELATION_ID_HEADER } from './aiCorrelationId.js'
 import { logAiDisabled, logAiMaintenanceMode, logAiRequest } from './aiRequestLogger.js'
 import {
@@ -151,6 +152,7 @@ export function finalizeAiRequest(params) {
   })
 
   appendAuditLogEntry(auditEntryFromRecord(record), { persist: params.persistAudit !== false })
+  evaluateRequestThresholdWarnings(record)
   evaluateCostAlerts()
 }
 

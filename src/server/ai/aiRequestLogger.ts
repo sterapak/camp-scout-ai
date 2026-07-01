@@ -63,3 +63,16 @@ export function logAiMaintenanceMode() {
 export function logAiError(message, context = {}) {
   process.stderr.write(`[AI error] ${JSON.stringify({ message, ...context })}\n`)
 }
+
+/**
+ * Logs a WARN-level AI event (token/cost/latency threshold breach).
+ * @param {string} reason
+ * @param {Record<string, unknown>} context
+ */
+export function logAiWarning(reason, context = {}) {
+  process.stderr.write(`[AI warn] ${JSON.stringify({
+    level: 'warning',
+    reason,
+    ...context,
+  })}\n`)
+}
