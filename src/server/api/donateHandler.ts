@@ -115,7 +115,14 @@ export async function handleDonateRequest(
       statusCode: 200,
       body: { url: session.url },
     }
-  } catch {
+  } catch (error) {
+    // Log the (scrubbed) cause so real Stripe/config failures are visible in
+    // production instead of silently returning 502.
+    process.stderr.write(
+      `[donate] Stripe checkout failed: ${
+        error instanceof Error ? error.message : String(error)
+      }\n`,
+    )
     return {
       statusCode: 502,
       body: { error: 'Payment provider request failed. Please try again.' },
