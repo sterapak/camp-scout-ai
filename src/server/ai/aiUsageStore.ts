@@ -24,8 +24,37 @@ import { estimateRequestCost } from './aiCostCalculator.js'
 const MAX_SLOWEST_REQUESTS = 20
 const MAX_IP_TRACKING = 100
 
+// Bound the retained records so a long-lived machine can't OOM. Retention
+// covers today's UTC budget window (with margin); a hard ceiling guards
+// against a burst inside that window. Aggregate counters (totalRequests,
+// costs, …) are unaffected — only the raw record list is trimmed.
+const RECORD_RETENTION_MS = 25 * 60 * 60 * 1000
+const MAX_RECORDS = 10_000
+
 /** @type {AiRequestRecord[]} */
 const allRecords = []
+
+/**
+ * Drops records outside the retention window (records are appended in
+ * timestamp order, so stale ones are always at the front).
+ * @param {number} [nowMs]
+ */
+function pruneOldRecords(nowMs = Date.now()) {
+  const cutoff = nowMs - RECORD_RETENTION_MS
+  let removeCount = 0
+  while (
+    removeCount < allRecords.length &&
+    new Date(allRecords[removeCount].timestamp).getTime() < cutoff
+  ) {
+    removeCount += 1
+  }
+  if (removeCount > 0) {
+    allRecords.splice(0, removeCount)
+  }
+  if (allRecords.length > MAX_RECORDS) {
+    allRecords.splice(0, allRecords.length - MAX_RECORDS)
+  }
+}
 
 /** @type {Map<string, number>} */
 const endpointCounts = new Map()
@@ -78,6 +107,7 @@ export function getHourKey(now = new Date()) {
  */
 export function recordAiRequest(record) {
   allRecords.push(record)
+  pruneOldRecords()
   totalRequests += 1
 
   if (record.responseStatus >= 200 && record.responseStatus < 400) {

@@ -15,6 +15,8 @@ primary_region = 'ord'
   NODE_ENV = 'production'
   OPENAI_ANSWER_PROVIDER = 'fake'
   AI_ENABLED = 'false'
+  # Explicit daily AI spend cap (also defaulted in code as a safety net).
+  AI_DAILY_BUDGET_USD = '5'
 
 [http_service]
   internal_port = 8080

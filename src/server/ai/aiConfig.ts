@@ -96,9 +96,14 @@ export function isAiMaintenanceMode() {
  *   hourlyDollarLimit?: number,
  * }}
  */
+// Fail-closed default so AI spend is always capped even if no budget env is
+// set. Overridable via AI_DAILY_BUDGET_USD / AI_DAILY_DOLLAR_LIMIT.
+export const DEFAULT_DAILY_DOLLAR_LIMIT = 5
+
 export function resolveAiBudgetLimits() {
   const dailyBudgetUsd = parseOptionalLimit(process.env[AI_DAILY_BUDGET_USD_ENV])
     ?? parseOptionalLimit(process.env[AI_DAILY_DOLLAR_LIMIT_ENV])
+    ?? DEFAULT_DAILY_DOLLAR_LIMIT
 
   return {
     dailyRequestLimit: parseOptionalLimit(process.env[AI_DAILY_REQUEST_LIMIT_ENV]),
