@@ -8,7 +8,7 @@ module.exports = {
     jest:    true,
   },
   parserOptions: {
-    ecmaVersion:  2020,
+    ecmaVersion:  2021,
     sourceType:   'module',
     ecmaFeatures: { jsx: true },
   },
@@ -16,7 +16,7 @@ module.exports = {
     react: { version: 'detect' },
     'import/resolver': {
       node: {
-        extensions: ['.js', '.jsx'],
+        extensions: ['.js', '.jsx', '.ts', '.tsx'],
       },
     },
   },

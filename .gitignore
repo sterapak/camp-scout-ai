@@ -8,3 +8,5 @@ dist
 # generated outputs
 coverage/
 .ai-audit/
+# Standardize on npm — a stray pnpm install skews jest package versions
+pnpm-lock.yaml

@@ -9,6 +9,7 @@ import {
   extractRequestApiToken,
   isApiAccessConfigured,
   resetRateLimitState,
+  resolveClientIp,
   resolveProtectedAnswerProvider,
   tokensMatch,
   validateApiAccess,
@@ -130,5 +131,27 @@ describe('apiProtection', () => {
     process.env.AI_ENABLED = 'false'
     process.env.OPENAI_ANSWER_PROVIDER = 'openai'
     expect(resolveProtectedAnswerProvider()).toBe('fake')
+  })
+})
+
+describe('resolveClientIp (anti-spoof)', () => {
+  const req = (headers) => ({ headers, socket: { remoteAddress: '10.0.0.1' } })
+
+  it('prefers the un-spoofable Fly-Client-IP over X-Forwarded-For', () => {
+    expect(
+      resolveClientIp(req({ 'fly-client-ip': '203.0.113.7', 'x-forwarded-for': '1.1.1.1' })),
+    ).toBe('203.0.113.7')
+  })
+
+  it('uses the last X-Forwarded-For hop, not the client-controlled first entry', () => {
+    // Attacker sets a fake first entry; trusted proxy appends the real IP last.
+    expect(
+      resolveClientIp(req({ 'x-forwarded-for': '9.9.9.9, 203.0.113.7' })),
+    ).toBe('203.0.113.7')
+  })
+
+  it('falls back to x-real-ip then the socket address', () => {
+    expect(resolveClientIp(req({ 'x-real-ip': '198.51.100.4' }))).toBe('198.51.100.4')
+    expect(resolveClientIp(req({}))).toBe('10.0.0.1')
   })
 })

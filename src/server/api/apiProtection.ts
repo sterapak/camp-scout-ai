@@ -107,9 +107,23 @@ export function validateApiAccess(req: IncomingMessage): ApiAccessResult {
 }
 
 export function resolveClientIp(req: IncomingMessage): string {
+  // Fly's edge sets Fly-Client-IP to the true client address and strips any
+  // client-supplied copy, so it cannot be spoofed. Prefer it — the first
+  // X-Forwarded-For entry is attacker-controlled and would let a client mint
+  // a fresh rate-limit bucket per request.
+  const flyClientIp = req.headers?.['fly-client-ip']
+  if (typeof flyClientIp === 'string' && flyClientIp.trim().length > 0) {
+    return flyClientIp.trim()
+  }
+
   const forwardedFor = req.headers?.['x-forwarded-for']
   if (typeof forwardedFor === 'string' && forwardedFor.trim().length > 0) {
-    return forwardedFor.split(',')[0].trim()
+    // Use the LAST hop (added by the nearest trusted proxy), never the
+    // client-controlled first entry.
+    const hops = forwardedFor.split(',').map((part) => part.trim()).filter(Boolean)
+    if (hops.length > 0) {
+      return hops[hops.length - 1]
+    }
   }
 
   const realIp = req.headers?.['x-real-ip']

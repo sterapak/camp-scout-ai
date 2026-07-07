@@ -163,6 +163,15 @@ function handleOpsRoutes(req: IncomingMessage, res: ServerResponse, correlationI
       return true
     }
 
+    // Metrics expose request/token/cost internals — require the API token,
+    // like the other AI-ops routes.
+    const access = validateApiAccess(req)
+    if (!access.ok) {
+      const failure = access as ApiAccessFailure
+      sendJsonResponse(res, failure.statusCode, failure.body, { correlationId })
+      return true
+    }
+
     res.statusCode = 200
     res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
     setCorrelationIdHeader(res, correlationId)
@@ -273,6 +282,13 @@ export function createAskRouteMiddleware(options: AskRouteMiddlewareOptions = {}
       if (req.method !== 'POST') {
         res.setHeader('Allow', 'POST')
         sendJsonResponse(res, 405, { error: 'Method not allowed. Use POST.' }, { correlationId })
+        return
+      }
+
+      const donateAccess = checkRouteRateLimit(DONATE_ROUTE_PATH, resolveClientIp(req))
+      if (!donateAccess.ok) {
+        const failure = donateAccess as ApiAccessFailure
+        sendJsonResponse(res, failure.statusCode, failure.body, { correlationId })
         return
       }
 
