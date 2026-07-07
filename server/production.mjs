@@ -34,6 +34,34 @@ const MIME_TYPES = {
 
 const apiMiddleware = createAskRouteMiddleware()
 
+// script-src 'self' is the real protection (no external scripts; Vite bundles
+// same-origin). img/connect stay permissive so external campground images and
+// Supabase calls keep working. frame-ancestors blocks clickjacking.
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https:",
+  "connect-src 'self' https:",
+  "font-src 'self' data:",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join('; ')
+
+/**
+ * Applies baseline security headers to every response.
+ * @param {import('node:http').ServerResponse} res
+ */
+function setSecurityHeaders(res) {
+  res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY)
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+  res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains')
+}
+
 /**
  * Resolves a request path to a file under STATIC_ROOT, blocking traversal.
  * @param {string} requestPath
@@ -70,7 +98,17 @@ function sendStaticFile(res, filePath) {
  * @param {import('node:http').ServerResponse} res
  */
 function serveStaticOrSpa(req, res) {
-  const filePath = resolveStaticPath(req.url ?? '/')
+  let filePath
+  try {
+    filePath = resolveStaticPath(req.url ?? '/')
+  } catch {
+    // Malformed percent-encoding in the URL (e.g. "/foo%") throws URIError —
+    // respond 400 instead of crashing the request handler.
+    res.statusCode = 400
+    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    res.end(JSON.stringify({ error: 'Malformed request URL.' }))
+    return
+  }
 
   if (filePath && existsSync(filePath) && statSync(filePath).isFile()) {
     sendStaticFile(res, filePath)
@@ -101,6 +139,8 @@ function runApiMiddleware(req, res) {
 }
 
 const server = createServer(async (req, res) => {
+  setSecurityHeaders(res)
+
   await runApiMiddleware(req, res)
 
   if (res.writableEnded) {

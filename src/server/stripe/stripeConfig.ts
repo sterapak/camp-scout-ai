@@ -35,8 +35,12 @@ export function resolveCheckoutBaseUrl(requestOrigin?: string): string | undefin
     return configured.replace(/\/$/, '')
   }
 
-  if (requestOrigin?.trim()) {
-    return requestOrigin.trim().replace(/\/$/, '')
+  // No APP_URL configured: only trust a localhost origin (dev convenience).
+  // Never build success/cancel URLs from an arbitrary client-supplied Origin —
+  // that would let an attacker redirect the post-payment flow to their domain.
+  const origin = requestOrigin?.trim().replace(/\/$/, '')
+  if (origin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+    return origin
   }
 
   return undefined
