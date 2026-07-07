@@ -10,3 +10,10 @@ coverage/
 .ai-audit/
 # Standardize on npm — a stray pnpm install skews jest package versions
 pnpm-lock.yaml
+
+# Build output written into docs/ by `npm run build` (served by nothing —
+# Fly serves dist/). The hand-maintained docs/*.md files stay tracked.
+docs/assets/
+docs/index.html
+docs/sitemap.xml
+docs/robots.txt
