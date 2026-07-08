@@ -1,5 +1,5 @@
 /** @jest-environment node */
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -57,5 +57,17 @@ describe('durable AI budget (SQLite)', () => {
     const result = checkAiBudgetExceeded(now)
     expect(result.exceeded).toBe(true)
     expect(result.window).toBe('daily')
+  })
+
+  it('fails CLOSED when the budget ledger cannot be read (blocks, not allows)', () => {
+    // Point at an unopenable path (parent is a file, so the DB can't be created).
+    const notADir = join(dir, 'not-a-dir')
+    writeFileSync(notADir, 'x')
+    process.env.DATABASE_PATH = join(notADir, 'budget.sqlite')
+    __resetDbForTests(null)
+
+    const result = checkAiBudgetExceeded()
+    expect(result.exceeded).toBe(true)
+    expect(result.reason).toMatch(/failing closed/i)
   })
 })
