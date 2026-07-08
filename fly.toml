@@ -17,11 +17,19 @@ primary_region = 'ord'
   AI_ENABLED = 'false'
   # Explicit daily AI spend cap (also defaulted in code as a safety net).
   AI_DAILY_BUDGET_USD = '5'
+  # SQLite lives on the /data volume (durable AI budget accounting).
+  DATABASE_PATH = '/data/campscout.sqlite'
+
+# SQLite is single-writer, so this app runs as a single stateful machine that
+# stays up (never auto-stopped).
+[[mounts]]
+  source = 'campscout_data'
+  destination = '/data'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = 'stop'
+  auto_stop_machines = 'off'
   auto_start_machines = true
   min_machines_running = 1
   processes = ['app']

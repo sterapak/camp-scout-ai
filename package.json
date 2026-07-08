@@ -9,6 +9,7 @@
     "build:fly": "CAMP_SCOUT_BASE=/ BUILD_OUT_DIR=dist vite build && node scripts/generate-sitemap.mjs",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
     "generate:terapak-sitemap": "node scripts/generate-terapak-sitemap.mjs",
+    "db:generate": "drizzle-kit generate",
     "preview": "vite preview",
     "start": "node server/production.mjs",
     "lint": "eslint src --ext .js --ext .jsx",
@@ -20,6 +21,8 @@
     "cypress:run": "cypress run"
   },
   "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "drizzle-orm": "^0.45.2",
     "framer-motion": "^10.18.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -36,6 +39,7 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.0.1",
     "@types/react": "^19.2.17",
@@ -46,6 +50,7 @@
     "autoprefixer": "^10.4.0",
     "babel-jest": "^30.0.2",
     "cypress": "^14.5.0",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-react": "^7.37.5",
