@@ -7,7 +7,7 @@
 #   fly secrets set APP_URL=https://campscout.terapak.com
 
 app = 'campscout'
-primary_region = 'ord'
+primary_region = 'sjc'
 
 [build]
 

@@ -15,7 +15,24 @@ const loggedBudgetExceededKeys = new Set()
  */
 export function checkAiBudgetExceeded(now = new Date()) {
   const limits = resolveAiBudgetLimits()
-  const usage = getBudgetUsage(now)
+
+  let usage
+  try {
+    usage = getBudgetUsage(now)
+  } catch (error) {
+    // Fail closed: if the durable budget can't be read, block rather than
+    // risk uncapped spend on an unreadable ledger.
+    process.stderr.write(
+      `[ai-budget] usage read failed — failing closed: ${
+        error instanceof Error ? error.message : String(error)
+      }\n`,
+    )
+    return {
+      exceeded: true,
+      reason: 'AI budget ledger unavailable (failing closed)',
+      window: 'daily',
+    }
+  }
 
   const dailyChecks = [
     { limit: limits.dailyRequestLimit, used: usage.daily.requests, label: 'daily request limit' },
