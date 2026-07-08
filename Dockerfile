@@ -2,6 +2,9 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
+# Toolchain for compiling better-sqlite3 (native) on Alpine/musl.
+RUN apk add --no-cache python3 make g++
+
 COPY package.json package-lock.json ./
 RUN npm ci
 
@@ -19,7 +22,11 @@ ENV NODE_ENV=production
 ENV PORT=8080
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+# Compile better-sqlite3 with a virtual toolchain, then drop it so the runtime
+# image stays lean (the compiled .node binary is all that's needed at runtime).
+RUN apk add --no-cache --virtual .build-deps python3 make g++ \
+ && npm ci --omit=dev \
+ && apk del .build-deps
 
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server

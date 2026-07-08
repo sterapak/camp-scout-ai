@@ -3,7 +3,7 @@
  */
 
 import { resolveAiBudgetLimits, resolveCostAlertThresholds } from './aiConfig.js'
-import { getBudgetUsage } from './aiUsageStore.js'
+import { getBudgetUsage } from '../db/budgetRepository.js'
 
 /** @type {Set<number>} */
 const triggeredDailyThresholds = new Set()

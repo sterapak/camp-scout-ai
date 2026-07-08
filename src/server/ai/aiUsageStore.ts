@@ -2,6 +2,7 @@
  * In-memory AI usage store for metrics, dashboards, and monitoring.
  */
 
+import { recordBudgetUsage, __resetBudgetForTests } from '../db/budgetRepository.js'
 import { estimateRequestCost } from './aiCostCalculator.js'
 
 /** @typedef {{
@@ -108,6 +109,22 @@ export function getHourKey(now = new Date()) {
 export function recordAiRequest(record) {
   allRecords.push(record)
   pruneOldRecords()
+  // Durable budget accounting (best-effort — a DB hiccup must never break
+  // request handling). The in-memory aggregates below power the dashboard;
+  // the SQLite buckets survive restarts and drive the spend cap.
+  try {
+    recordBudgetUsage({
+      inputTokens: record.promptTokenEstimate,
+      outputTokens: record.completionTokens,
+      costUsd: record.estimatedCostUsd,
+    })
+  } catch (error) {
+    process.stderr.write(
+      `[ai-budget] failed to persist usage: ${
+        error instanceof Error ? error.message : String(error)
+      }\n`,
+    )
+  }
   totalRequests += 1
 
   if (record.responseStatus >= 200 && record.responseStatus < 400) {
@@ -361,6 +378,11 @@ export function buildRequestRecord(params) {
  * Clears all usage state (for tests).
  */
 export function resetAiUsageStore() {
+  try {
+    __resetBudgetForTests()
+  } catch {
+    // DB not available in this context — in-memory reset below is enough.
+  }
   allRecords.length = 0
   endpointCounts.clear()
   providerCounts.clear()
