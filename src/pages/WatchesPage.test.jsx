@@ -1,12 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 import WatchesPage from './WatchesPage'
 import * as watchClient from '../api/watchClient'
 
 jest.mock('../api/watchClient')
-jest.mock('../components/WatchCreateForm', () => function MockForm() {
-  return <div>create-form</div>
+jest.mock('../components/WatchCampgroundPicker', () => function MockPicker() {
+  return <div>campground-picker</div>
 })
 
 function setToken(token) {
@@ -52,10 +52,7 @@ describe('WatchesPage', () => {
     expect(screen.getByText(/2026-11-15/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /pause/i })).toBeInTheDocument()
 
-    // The create form is not shown until a campground is picked — the page now
-    // drives watch creation off the app's own campground list, not free text.
-    expect(screen.queryByText('create-form')).not.toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Campground'), { target: { value: '__other__' } })
-    expect(screen.getByText('create-form')).toBeInTheDocument()
+    // Watch creation is driven by the searchable campground picker.
+    expect(screen.getByText('campground-picker')).toBeInTheDocument()
   })
 })

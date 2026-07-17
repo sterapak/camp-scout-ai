@@ -20,3 +20,28 @@ export async function fetchCampgroundPhoto(facilityId: string): Promise<Campgrou
     return null
   }
 }
+
+export interface RecgovCampground {
+  id: string
+  facilityId: string
+  name: string
+  region: string
+  latitude: number | null
+  longitude: number | null
+  reservationUrl: string
+  description: string
+}
+
+/** All Recreation.gov campgrounds for a state (default CA), imported from RIDB. */
+export async function fetchRecgovCampgrounds(state = 'CA'): Promise<RecgovCampground[]> {
+  try {
+    const res = await fetch(`/api/campgrounds/recgov?state=${encodeURIComponent(state)}`, {
+      credentials: 'same-origin',
+    })
+    if (!res.ok) return []
+    const data = (await res.json()) as { campgrounds?: RecgovCampground[] }
+    return Array.isArray(data.campgrounds) ? data.campgrounds : []
+  } catch {
+    return []
+  }
+}
