@@ -2,11 +2,16 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { FiExternalLink, FiMapPin } from 'react-icons/fi'
 import AvailabilityNotice from './AvailabilityNotice'
+import CampgroundThumbnail from './CampgroundThumbnail'
 
 /** @param {{ campground: import('../data/campgroundSchema.js').Campground }} props */
 export default function CampgroundCard({ campground }) {
   return (
-    <article className="flex flex-col rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow">
+    <article className="flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow">
+      <Link to={`/campgrounds/${campground.id}`} className="block" aria-label={`View ${campground.name}`}>
+        <CampgroundThumbnail campground={campground} />
+      </Link>
+
       <div className="flex flex-col flex-1 p-5 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div>
