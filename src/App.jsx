@@ -1,6 +1,7 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import AppShell from './components/AppShell'
+import SignInGate from './components/SignInGate'
 import CampgroundsPage from './pages/CampgroundsPage'
 import CampgroundDetailPage from './pages/CampgroundDetailPage'
 import SettingsPage from './pages/SettingsPage'
@@ -9,10 +10,11 @@ import RetrievalPlaygroundPage from './pages/RetrievalPlaygroundPage'
 import DonationSuccessPage from './pages/DonationSuccessPage'
 import DonationCancelPage from './pages/DonationCancelPage'
 import SupportPage from './pages/SupportPage'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
 
-export default function App() {
+function AuthenticatedApp() {
   return (
     <BrowserRouter basename={basename || undefined}>
       <AppShell>
@@ -29,5 +31,18 @@ export default function App() {
         </Routes>
       </AppShell>
     </BrowserRouter>
+  )
+}
+
+function Gate() {
+  const { isAuthenticated } = useAuth()
+  return isAuthenticated ? <AuthenticatedApp /> : <SignInGate />
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Gate />
+    </AuthProvider>
   )
 }

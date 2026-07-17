@@ -1,28 +1,25 @@
 /**
- * Availability-watch API routes (single-user; protected by the same
- * CAMP_SCOUT_API_TOKEN as the rest of the API). Composed into the main
- * middleware in askRoute.ts. Returns true if it handled the request.
+ * Availability-watch API routes — per-user (authenticated via the session
+ * cookie; every row is scoped to the signed-in user). Composed into the server
+ * in production.mjs. Returns true if it handled the request.
  *
- *   GET    /api/watches            list watches
- *   POST   /api/watches            create a watch
- *   PATCH  /api/watches/:id        update (e.g. { status: 'paused' })
- *   DELETE /api/watches/:id        delete
- *   GET    /api/alerts             recent alerts
- *   GET    /api/settings/contact   owner phone/email/channel prefs
- *   PUT    /api/settings/contact   update owner contact
+ *   GET    /api/watches            list the user's watches
+ *   POST   /api/watches            create a watch (owned by the user)
+ *   PATCH  /api/watches/:id        update the user's watch (status/minNights)
+ *   DELETE /api/watches/:id        delete the user's watch
+ *   GET    /api/alerts             the user's recent alerts
+ *   GET    /api/settings/contact   the user's notify prefs
+ *   PUT    /api/settings/contact   update the user's notify prefs
  */
 import { randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 
 import { getDb } from '../db/index.js'
-import { alertsSent, ownerSettings, watches } from '../db/schema.js'
+import { alertsSent, userSettings, watches } from '../db/schema.js'
 import { parseRecGovCampgroundId } from '../availability/recGovAdapter.js'
-import {
-  validateApiAccess,
-  type ApiAccessFailure,
-} from './apiProtection.js'
+import { requireUser } from '../auth/authRoutes.js'
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -57,21 +54,25 @@ export async function handleWatchRoutes(
     pathname === '/api/settings/contact'
   if (!isWatchPath) return false
 
-  // Auth: same token as the rest of the API.
-  const access = validateApiAccess(req)
-  if (!access.ok) {
-    const failure = access as ApiAccessFailure
-    sendJson(res, failure.statusCode, failure.body)
+  // Auth: signed-in user only (session cookie). Everything is scoped to them.
+  const user = requireUser(req)
+  if (!user) {
+    sendJson(res, 401, { error: 'Sign in required.' })
     return true
   }
-
-  const db = getDb() // opened lazily, only for watch routes
+  const userId = user.uid
+  const db = getDb()
 
   try {
     // ---- /api/watches ----
     if (pathname === '/api/watches') {
       if (method === 'GET') {
-        const rows = db.select().from(watches).orderBy(desc(watches.createdAt)).all()
+        const rows = db
+          .select()
+          .from(watches)
+          .where(eq(watches.userId, userId))
+          .orderBy(desc(watches.createdAt))
+          .all()
         sendJson(res, 200, { watches: rows })
         return true
       }
@@ -79,7 +80,6 @@ export async function handleWatchRoutes(
         const body = await readBody(req)
         const platform = (body.platform as string) || 'recgov'
         let facilityId = (body.facilityId as string) || (body.campgroundId as string) || ''
-        // Convenience: accept a recreation.gov campground URL and parse the id.
         if (!facilityId && typeof body.recgovUrl === 'string') {
           facilityId = parseRecGovCampgroundId(body.recgovUrl) ?? ''
         }
@@ -107,6 +107,7 @@ export async function handleWatchRoutes(
         db.insert(watches)
           .values({
             id,
+            userId,
             platform,
             facilityId,
             campgroundName,
@@ -126,10 +127,14 @@ export async function handleWatchRoutes(
       return true
     }
 
-    // ---- /api/watches/:id ----
+    // ---- /api/watches/:id (must belong to the user) ----
     if (pathname.startsWith('/api/watches/')) {
       const id = pathname.slice('/api/watches/'.length)
-      const existing = db.select().from(watches).where(eq(watches.id, id)).get()
+      const existing = db
+        .select()
+        .from(watches)
+        .where(and(eq(watches.id, id), eq(watches.userId, userId)))
+        .get()
       if (!existing) {
         sendJson(res, 404, { error: 'Watch not found.' })
         return true
@@ -162,7 +167,13 @@ export async function handleWatchRoutes(
 
     // ---- /api/alerts ----
     if (pathname === '/api/alerts') {
-      const rows = db.select().from(alertsSent).orderBy(desc(alertsSent.sentAt)).limit(50).all()
+      const rows = db
+        .select()
+        .from(alertsSent)
+        .where(eq(alertsSent.userId, userId))
+        .orderBy(desc(alertsSent.sentAt))
+        .limit(50)
+        .all()
       sendJson(res, 200, { alerts: rows })
       return true
     }
@@ -170,25 +181,25 @@ export async function handleWatchRoutes(
     // ---- /api/settings/contact ----
     if (pathname === '/api/settings/contact') {
       if (method === 'GET') {
-        const row = db.select().from(ownerSettings).where(eq(ownerSettings.id, 1)).get()
+        const row = db.select().from(userSettings).where(eq(userSettings.userId, userId)).get()
         sendJson(res, 200, { settings: row ?? null })
         return true
       }
       if (method === 'PUT') {
         const body = await readBody(req)
         const values = {
-          id: 1 as const,
+          userId,
           phone: typeof body.phone === 'string' ? body.phone : null,
           email: typeof body.email === 'string' ? body.email : null,
           smsEnabled: body.smsEnabled !== false,
           emailEnabled: body.emailEnabled === true,
           updatedAt: new Date().toISOString(),
         }
-        db.insert(ownerSettings)
+        db.insert(userSettings)
           .values(values)
-          .onConflictDoUpdate({ target: ownerSettings.id, set: values })
+          .onConflictDoUpdate({ target: userSettings.userId, set: values })
           .run()
-        const row = db.select().from(ownerSettings).where(eq(ownerSettings.id, 1)).get()
+        const row = db.select().from(userSettings).where(eq(userSettings.userId, userId)).get()
         sendJson(res, 200, { settings: row })
         return true
       }

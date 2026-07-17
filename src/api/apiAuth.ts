@@ -22,6 +22,25 @@ export function isApiAvailable(): boolean {
   return resolveApiToken() !== null
 }
 
+/**
+ * The signed-in user, injected by the server into the runtime config. Null when
+ * logged out, or on the static build (no server → no runtime config at all).
+ */
+export function resolveRuntimeUser(): CampScoutRuntimeUser | null {
+  if (typeof window !== 'undefined') {
+    const user = window.__CAMP_SCOUT_RUNTIME__?.user
+    if (user && typeof user.email === 'string' && user.email.length > 0) {
+      return user
+    }
+  }
+  return null
+}
+
+/** True when the runtime config was served at all (i.e. a backend is present). */
+export function hasRuntimeConfig(): boolean {
+  return typeof window !== 'undefined' && window.__CAMP_SCOUT_RUNTIME__ != null
+}
+
 export function buildApiRequestHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

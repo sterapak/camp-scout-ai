@@ -142,7 +142,7 @@ describe('createAskRouteMiddleware', () => {
     expect(state.headers['content-type']).toBe('application/javascript; charset=utf-8')
     expect(state.headers['cache-control']).toBe('no-store')
     expect(state.body).toBe(
-      'window.__CAMP_SCOUT_RUNTIME__={"apiToken":"test-api-token"};'
+      'window.__CAMP_SCOUT_RUNTIME__={"apiToken":"test-api-token","user":null};'
     )
   })
 

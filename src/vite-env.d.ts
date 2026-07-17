@@ -1,7 +1,14 @@
 /// <reference types="vite/client" />
 
+interface CampScoutRuntimeUser {
+  email: string
+  name?: string
+  picture?: string
+}
+
 interface CampScoutRuntimeConfig {
   apiToken?: string
+  user?: CampScoutRuntimeUser | null
 }
 
 interface Window {

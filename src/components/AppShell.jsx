@@ -1,10 +1,10 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
 import { FiBell, FiBookOpen, FiCompass, FiHeart, FiMenu, FiSettings } from 'react-icons/fi'
-import { isApiAvailable } from '../api/apiAuth'
 import SupportMenu from './SupportMenu'
 import ThemeToggle from './ThemeToggle'
 import DonationAcknowledgment from './DonationAcknowledgment'
+import UserMenu from './UserMenu'
 import { HEADER_NEUTRAL_BUTTON_CLASS } from './headerButtonStyles'
 
 export default function AppShell({ children }) {
@@ -33,19 +33,17 @@ export default function AppShell({ children }) {
             <FiCompass className="mr-3" />
             Browse Campgrounds
           </NavLink>
-          {isApiAvailable() && (
-            <NavLink
-              to="/watches"
-              className={({ isActive }) =>
-                `flex items-center px-4 py-2 rounded-lg transition ${
-                  isActive ? 'bg-gray-700' : 'hover:bg-gray-800'
-                }`
-              }
-            >
-              <FiBell className="mr-3" />
-              Watches
-            </NavLink>
-          )}
+          <NavLink
+            to="/watches"
+            className={({ isActive }) =>
+              `flex items-center px-4 py-2 rounded-lg transition ${
+                isActive ? 'bg-gray-700' : 'hover:bg-gray-800'
+              }`
+            }
+          >
+            <FiBell className="mr-3" />
+            Watches
+          </NavLink>
           <NavLink
             to="/retrieval"
             className={({ isActive }) =>
@@ -109,6 +107,7 @@ export default function AppShell({ children }) {
               >
                 Settings
               </NavLink>
+              <UserMenu />
             </nav>
           </div>
         </header>

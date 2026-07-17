@@ -9,6 +9,7 @@ import { extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { createAskRouteMiddleware } from '../src/server/api/askRoute.js'
+import { handleAuthRoutes } from '../src/server/auth/authRoutes.js'
 import { handleWatchRoutes } from '../src/server/api/watchRoute.js'
 import { startWatchScheduler } from '../src/server/availability/scheduler.js'
 import { getDb } from '../src/server/db/index.js'
@@ -144,7 +145,12 @@ function runApiMiddleware(req, res) {
 const server = createServer(async (req, res) => {
   setSecurityHeaders(res)
 
-  // Availability-watch API (own auth + lazy DB inside).
+  // Auth routes: /auth/google, /auth/google/callback, /auth/logout, /auth/me.
+  if (await handleAuthRoutes(req, res)) {
+    return
+  }
+
+  // Availability-watch API (per-user session auth + lazy DB inside).
   if (await handleWatchRoutes(req, res)) {
     return
   }

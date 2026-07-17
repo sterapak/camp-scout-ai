@@ -25,6 +25,22 @@ export type AiBudgetUsageRow = typeof aiBudgetUsage.$inferSelect
 const nowDefault = sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`
 
 /**
+ * Google-authenticated users. Identity comes from Google OAuth; the app is
+ * multi-user (each user owns their own watches + notify settings). Sessions are
+ * stateless signed-JWT cookies, so there is no sessions table.
+ */
+export const users = sqliteTable('users', {
+  id: text('id').primaryKey(), // uuid
+  googleSub: text('google_sub').notNull().unique(), // Google's stable subject id
+  email: text('email').notNull(),
+  name: text('name'),
+  picture: text('picture'),
+  createdAt: text('created_at').notNull().default(nowDefault),
+})
+
+export type UserRow = typeof users.$inferSelect
+
+/**
  * Availability watches: one row per "watch this campground for a freed-up
  * reservation" request. The scheduler polls each active watch, diffs the fresh
  * availability against the last snapshot, and alerts on a Reserved -> Available
@@ -32,6 +48,9 @@ const nowDefault = sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`
  */
 export const watches = sqliteTable('watches', {
   id: text('id').primaryKey(), // uuid
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   // 'recgov' (Recreation.gov) or 'reservecalifornia' (Phase 2).
   platform: text('platform').notNull(),
   // Recreation.gov campground id (e.g. "232447"); RC FacilityId in Phase 2.
@@ -78,6 +97,9 @@ export type AvailabilitySnapshotRow = typeof availabilitySnapshots.$inferSelect
  */
 export const alertsSent = sqliteTable('alerts_sent', {
   id: text('id').primaryKey(), // uuid
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   watchId: text('watch_id').notNull(),
   dedupKey: text('dedup_key').notNull().unique(),
   siteId: text('site_id').notNull(),
@@ -93,17 +115,22 @@ export const alertsSent = sqliteTable('alerts_sent', {
 export type AlertSentRow = typeof alertsSent.$inferSelect
 
 /**
- * Single-row owner contact + channel preferences (v1 is single-user). Twilio /
- * email provider SECRETS live in env, not here — this is just who to notify and
- * on which channels.
+ * Per-user contact + channel preferences (one row per user). Twilio / email
+ * SECRETS live in env — this is just who to notify and on which channels.
+ * phoneVerified + smsConsentAt are populated by the Phase-2 verification flow;
+ * SMS to a user is gated on both once A2P 10DLC is live (Phase 3).
  */
-export const ownerSettings = sqliteTable('owner_settings', {
-  id: integer('id').primaryKey().default(1), // always 1
+export const userSettings = sqliteTable('user_settings', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
   phone: text('phone'), // E.164
   email: text('email'),
   smsEnabled: integer('sms_enabled', { mode: 'boolean' }).notNull().default(true),
   emailEnabled: integer('email_enabled', { mode: 'boolean' }).notNull().default(false),
+  phoneVerified: integer('phone_verified', { mode: 'boolean' }).notNull().default(false),
+  smsConsentAt: text('sms_consent_at'), // ISO timestamp of explicit SMS opt-in
   updatedAt: text('updated_at').notNull().default(nowDefault),
 })
 
-export type OwnerSettingsRow = typeof ownerSettings.$inferSelect
+export type UserSettingsRow = typeof userSettings.$inferSelect

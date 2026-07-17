@@ -9,7 +9,7 @@ import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
 
 import type { Db } from '../db/index.js'
-import { alertsSent, ownerSettings, type WatchRow } from '../db/schema.js'
+import { alertsSent, userSettings, type WatchRow } from '../db/schema.js'
 import { buildSiteDeepLink } from '../availability/recGovAdapter.js'
 import type { WatchMatch } from '../availability/diffEngine.js'
 import { sendSms, twilioConfigured, type SendSmsDeps } from './twilioSmsSender.js'
@@ -47,8 +47,10 @@ export async function dispatchMatches(
   const result: DispatchResult = { sent: 0, skipped: 0, failed: 0 }
   if (matches.length === 0) return result
 
-  const owner = db.select().from(ownerSettings).where(eq(ownerSettings.id, 1)).get()
-  if (!owner) return result // no contact configured yet
+  // Notify the watch's OWNER (per-user settings). Phase 2 will additionally gate
+  // SMS on phoneVerified + smsConsentAt (once A2P 10DLC is live).
+  const owner = db.select().from(userSettings).where(eq(userSettings.userId, watch.userId)).get()
+  if (!owner) return result // this user hasn't set up notifications yet
 
   for (const match of matches) {
     const dedupKey = `${watch.id}|${match.siteId}|${match.date}`
@@ -71,6 +73,7 @@ export async function dispatchMatches(
       db.insert(alertsSent)
         .values({
           id: randomUUID(),
+          userId: watch.userId,
           watchId: watch.id,
           dedupKey,
           siteId: match.siteId,

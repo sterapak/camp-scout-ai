@@ -34,6 +34,8 @@ import {
 import { handleAskRequest, INVALID_JSON_ERROR } from './askHandler.js'
 import { handleDonateRequest } from './donateHandler.js'
 import { handleSummaryRequest } from './summaryHandler.js'
+import { parseCookies, SESSION_COOKIE } from '../auth/cookies.js'
+import { verifySession } from '../auth/jwt.js'
 import {
   JsonBodyTooLargeError,
   resolveMaxJsonBodyBytes,
@@ -128,13 +130,17 @@ export function sendJsonResponse(
   res.end(JSON.stringify(payload))
 }
 
-export function sendRuntimeConfigScript(res: ServerResponse): void {
+export function sendRuntimeConfigScript(req: IncomingMessage, res: ServerResponse): void {
   const token = resolveConfiguredApiToken() ?? ''
+  const session = verifySession(parseCookies(req)[SESSION_COOKIE])
+  const user = session
+    ? { email: session.email, name: session.name, picture: session.picture }
+    : null
 
   res.statusCode = 200
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8')
   res.setHeader('Cache-Control', 'no-store')
-  res.end(`window.__CAMP_SCOUT_RUNTIME__=${JSON.stringify({ apiToken: token })};`)
+  res.end(`window.__CAMP_SCOUT_RUNTIME__=${JSON.stringify({ apiToken: token, user })};`)
 }
 
 function parseOptionalQueryInt(value: string | null): number | undefined {
@@ -274,7 +280,7 @@ export function createAskRouteMiddleware(options: AskRouteMiddlewareOptions = {}
         return
       }
 
-      sendRuntimeConfigScript(res)
+      sendRuntimeConfigScript(req, res)
       return
     }
 

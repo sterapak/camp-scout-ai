@@ -5,7 +5,13 @@ import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
 import { getDb, __resetDbForTests } from '../db/index.js'
-import { alertsSent, availabilitySnapshots, ownerSettings, watches } from '../db/schema.js'
+import {
+  alertsSent,
+  availabilitySnapshots,
+  users,
+  userSettings,
+  watches,
+} from '../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { runOneTick } from './scheduler.js'
 
@@ -34,12 +40,17 @@ describe('watch scheduler (end-to-end tick)', () => {
     __resetDbForTests(null)
 
     const db = getDb()
-    db.insert(ownerSettings)
-      .values({ id: 1, phone: '+15550001111', smsEnabled: true, emailEnabled: false })
+    const userId = randomUUID()
+    db.insert(users)
+      .values({ id: userId, googleSub: 'sub-1', email: 'camper@example.com', name: 'Camper' })
+      .run()
+    db.insert(userSettings)
+      .values({ userId, phone: '+15550001111', smsEnabled: true, emailEnabled: false })
       .run()
     db.insert(watches)
       .values({
         id: 'w1',
+        userId,
         platform: 'recgov',
         facilityId: '232447',
         campgroundName: 'Upper Pines',
