@@ -18,8 +18,13 @@ import { and, desc, eq } from 'drizzle-orm'
 
 import { getDb } from '../db/index.js'
 import { alertsSent, userSettings, watches } from '../db/schema.js'
-import { parseRecGovCampgroundId } from '../availability/recGovAdapter.js'
+import { checkCampgroundWatchable, parseRecGovCampgroundId } from '../availability/recGovAdapter.js'
 import { requireUser } from '../auth/authRoutes.js'
+
+export interface WatchRouteDeps {
+  /** Injectable fetch for the create-time availability probe (tests). */
+  fetchImpl?: typeof fetch
+}
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -43,6 +48,7 @@ async function readBody(req: IncomingMessage): Promise<Record<string, unknown>> 
 export async function handleWatchRoutes(
   req: IncomingMessage,
   res: ServerResponse,
+  deps: WatchRouteDeps = {},
 ): Promise<boolean> {
   const pathname = req.url?.split('?')[0] ?? ''
   const method = req.method ?? 'GET'
@@ -102,6 +108,21 @@ export async function handleWatchRoutes(
           sendJson(res, 400, { error: 'endDate must be on or after startDate.' })
           return true
         }
+
+        // Validate the campground actually has a Recreation.gov availability feed
+        // before saving — otherwise the watch would 404 on every poll forever.
+        const check = await checkCampgroundWatchable(facilityId, startDate.slice(0, 7), {
+          fetchImpl: deps.fetchImpl,
+        })
+        if (check.reason === 'not_found') {
+          sendJson(res, 400, {
+            error:
+              "This campground doesn't publish a Recreation.gov availability feed we can watch (got 404). It may be first-come/permit-only, or the link or ID is off.",
+          })
+          return true
+        }
+        // A transient probe error (5xx/network) falls through — fail open; the
+        // poller will retry rather than block a valid campground on a blip.
 
         const id = randomUUID()
         db.insert(watches)

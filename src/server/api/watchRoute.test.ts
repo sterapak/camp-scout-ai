@@ -56,14 +56,33 @@ function cookieFor(uid: string, email: string): string {
   return `${SESSION_COOKIE}=${signSession({ uid, email })}`
 }
 
+// Default create-time availability probe: a valid (200) Recreation.gov feed.
+const okAvailabilityFetch = (async () => ({
+  ok: true,
+  status: 200,
+  statusText: 'OK',
+  json: async () => ({ campsites: {} }),
+})) as unknown as typeof fetch
+
+// A campground with no availability feed (Gold Bluffs case).
+const notFoundFetch = (async () => ({
+  ok: false,
+  status: 404,
+  statusText: 'Not Found',
+  json: async () => ({}),
+})) as unknown as typeof fetch
+
 async function call(opts: {
   method: string
   url: string
   cookie?: string
   body?: unknown
+  fetchImpl?: typeof fetch
 }): Promise<{ status: number; json: any; handled: boolean }> {
   const { res, state } = mockRes()
-  const handled = await handleWatchRoutes(mockReq(opts), res)
+  const handled = await handleWatchRoutes(mockReq(opts), res, {
+    fetchImpl: opts.fetchImpl ?? okAvailabilityFetch,
+  })
   return {
     handled,
     status: state.status,
@@ -116,6 +135,26 @@ describe('watchRoute per-user isolation', () => {
     const r = await call({ method: 'GET', url: '/api/watches' })
     expect(r.handled).toBe(true)
     expect(r.status).toBe(401)
+  })
+
+  it('rejects a campground with no Recreation.gov availability feed (404)', async () => {
+    const r = await call({
+      method: 'POST',
+      url: '/api/watches',
+      cookie: cookieFor(USER_A, 'a@example.com'),
+      body: newWatchBody,
+      fetchImpl: notFoundFetch,
+    })
+    expect(r.status).toBe(400)
+    expect(r.json.error).toMatch(/availability feed/i)
+
+    // Nothing was saved.
+    const list = await call({
+      method: 'GET',
+      url: '/api/watches',
+      cookie: cookieFor(USER_A, 'a@example.com'),
+    })
+    expect(list.json.watches).toHaveLength(0)
   })
 
   it('scopes created watches to the signed-in user', async () => {

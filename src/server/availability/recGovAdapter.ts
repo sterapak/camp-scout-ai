@@ -93,6 +93,32 @@ export async function fetchMonthAvailability(
   return { ok: true, status: res.status, availability: normalizeRecGov(res.data) }
 }
 
+export type WatchableCheck =
+  | { watchable: true; reason: 'ok' }
+  | { watchable: false; reason: 'not_found'; status: number }
+  | { watchable: false; reason: 'probe_error'; status: number; detail?: string }
+
+/**
+ * Confirm a campground actually exposes a Recreation.gov availability feed
+ * before we let someone watch it. A 404 means it's not a watchable campground
+ * (e.g. a permit/tour facility, or a bad id) — reject definitively. Any other
+ * failure is treated as transient (fail open) so a network blip doesn't block a
+ * valid campground; the poller will retry.
+ */
+export async function checkCampgroundWatchable(
+  campgroundId: string,
+  monthKey: string,
+  options: PoliteFetchOptions = {},
+): Promise<WatchableCheck> {
+  if (!/^\d+$/.test(campgroundId)) {
+    return { watchable: false, reason: 'not_found', status: 0 }
+  }
+  const res = await fetchMonthAvailability(campgroundId, monthKey, options)
+  if (res.ok) return { watchable: true, reason: 'ok' }
+  if (res.status === 404) return { watchable: false, reason: 'not_found', status: 404 }
+  return { watchable: false, reason: 'probe_error', status: res.status ?? 0, detail: res.error }
+}
+
 /** Deep link straight to a specific bookable campsite. */
 export function buildSiteDeepLink(siteId: string): string {
   return `${BASE}/camping/campsites/${siteId}`

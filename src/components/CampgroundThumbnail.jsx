@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { FiImage } from 'react-icons/fi'
 import { getPrimaryImage } from '../data/campgroundData'
 import { isApiAvailable } from '../api/apiAuth'
@@ -7,9 +7,10 @@ import { fetchCampgroundPhoto } from '../api/campgroundMediaClient'
 
 /**
  * Compact card thumbnail. Prefers a curated image; otherwise resolves the
- * official Recreation.gov photo (RIDB) for Recreation.gov campgrounds. Falls
- * back to a clean placeholder tile. Full attribution lives on the detail page
- * this card links to.
+ * official Recreation.gov photo (RIDB) for Recreation.gov campgrounds — but only
+ * once the card scrolls near the viewport, so a long list (300+) doesn't fire
+ * hundreds of photo lookups at once. Falls back to a clean placeholder tile.
+ * Full attribution lives on the detail page this card links to.
  *
  * @param {{ campground: import('../data/campgroundSchema.js').Campground }} props
  */
@@ -17,12 +18,39 @@ export default function CampgroundThumbnail({ campground }) {
   const curated = getPrimaryImage(campground)
   const [photo, setPhoto] = useState(curated)
   const [errored, setErrored] = useState(false)
+  const [visible, setVisible] = useState(false)
+  const ref = useRef(null)
+
+  // Reset when the card is reused for a different campground.
+  useEffect(() => {
+    setPhoto(getPrimaryImage(campground))
+    setErrored(false)
+    // eslint-disable-line
+  }, [campground.id])
+
+  // Defer the photo fetch until the card is near the viewport.
+  useEffect(() => {
+    if (curated) return undefined
+    const el = ref.current
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setVisible(true)
+      return undefined
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setVisible(true)
+          io.disconnect()
+        }
+      },
+      { rootMargin: '250px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [curated, campground.id])
 
   useEffect(() => {
-    setErrored(false)
-    setPhoto(curated)
-    if (curated) return undefined
-
+    if (curated || !visible) return undefined
     const facilityId = parseRecGovCampgroundId(campground.reservationUrl)
     if (!facilityId || !isApiAvailable()) return undefined
 
@@ -33,27 +61,27 @@ export default function CampgroundThumbnail({ campground }) {
     return () => {
       cancelled = true
     }
-  }, [campground.id, campground.reservationUrl, curated])
-
-  if (!photo || errored) {
-    return (
-      <div
-        className="flex aspect-[16/9] w-full items-center justify-center bg-gray-100 dark:bg-gray-800"
-        aria-hidden="true"
-      >
-        <FiImage className="text-gray-300 dark:text-gray-600" size={28} />
-      </div>
-    )
-  }
+  }, [visible, curated, campground.reservationUrl])
 
   return (
-    <img
-      src={photo.url}
-      alt={photo.altText}
-      title={photo.sourceName ? `Photo: ${photo.sourceName}` : undefined}
-      loading="lazy"
-      className="aspect-[16/9] w-full object-cover"
-      onError={() => setErrored(true)}
-    />
+    <div ref={ref}>
+      {!photo || errored ? (
+        <div
+          className="flex aspect-[16/9] w-full items-center justify-center bg-gray-100 dark:bg-gray-800"
+          aria-hidden="true"
+        >
+          <FiImage className="text-gray-300 dark:text-gray-600" size={28} />
+        </div>
+      ) : (
+        <img
+          src={photo.url}
+          alt={photo.altText}
+          title={photo.sourceName ? `Photo: ${photo.sourceName}` : undefined}
+          loading="lazy"
+          className="aspect-[16/9] w-full object-cover"
+          onError={() => setErrored(true)}
+        />
+      )}
+    </div>
   )
 }

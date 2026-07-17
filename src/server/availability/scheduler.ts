@@ -84,6 +84,14 @@ function isDue(watch: WatchRow, now: Date, defaultInterval: number): boolean {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const snapshotKey = (facilityId: string, monthKey: string) => `recgov:${facilityId}:${monthKey}`
 
+/** Human-readable poll status from the failing HTTP status (0 = network). */
+function pollErrorMessage(status: number | undefined): string {
+  if (status === 404) return 'unavailable: campground not found on Recreation.gov (404)'
+  if (status && status >= 500) return `error: Recreation.gov ${status}`
+  if (status && status >= 400) return `error: Recreation.gov ${status}`
+  return 'error: network unreachable'
+}
+
 /** One scheduler pass. Deterministic w.r.t. injected deps for tests. */
 export async function runOneTick(
   db: Db,
@@ -132,7 +140,11 @@ export async function runOneTick(
   // Polite serial fetch. results: key -> { prev, fresh } (fresh null on error).
   const results = new Map<
     string,
-    { prev: NormalizedAvailability | null; fresh: NormalizedAvailability | null }
+    {
+      prev: NormalizedAvailability | null
+      fresh: NormalizedAvailability | null
+      status?: number
+    }
   >()
   let first = true
   for (const { facilityId, monthKey } of needed.values()) {
@@ -156,7 +168,7 @@ export async function runOneTick(
     if (!res.ok || !res.availability) {
       summary.fetchErrors += 1
       log('watch_fetch_error', { facilityId, monthKey, status: res.status, error: res.error })
-      results.set(key, { prev, fresh: null })
+      results.set(key, { prev, fresh: null, status: res.status })
       // Simple backoff: extra pause after an error so we don't hammer.
       await sleep(spacing)
       continue
@@ -182,6 +194,7 @@ export async function runOneTick(
   for (const w of dueRecgov) {
     summary.watchesPolled += 1
     let hadError = false
+    let errorStatus: number | undefined
     const filters = parseFilters(w.siteFilters)
 
     for (const monthKey of monthKeysBetween(w.startDate, w.endDate)) {
@@ -189,6 +202,7 @@ export async function runOneTick(
       const r = results.get(snapshotKey(w.facilityId, monthKey))
       if (!r || r.fresh === null) {
         hadError = true
+        if (r?.status) errorStatus = r.status
         continue
       }
       const matches = diffAvailability(r.prev, r.fresh, {
@@ -207,7 +221,7 @@ export async function runOneTick(
     db.update(watches)
       .set({
         lastPolledAt: nowDate.toISOString(),
-        lastPollStatus: hadError ? 'error: fetch failed' : 'ok',
+        lastPollStatus: hadError ? pollErrorMessage(errorStatus) : 'ok',
       })
       .where(eq(watches.id, w.id))
       .run()

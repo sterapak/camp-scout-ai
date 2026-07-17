@@ -1,10 +1,19 @@
 /** @jest-environment node */
 import {
+  checkCampgroundWatchable,
   fetchMonthAvailability,
   mapRecGovStatus,
   normalizeRecGov,
   parseRecGovCampgroundId,
 } from './recGovAdapter.js'
+
+const fetchWith = (ok: boolean, status: number): typeof fetch =>
+  (async () => ({
+    ok,
+    status,
+    statusText: ok ? 'OK' : 'Err',
+    json: async () => (ok ? { campsites: {} } : {}),
+  })) as unknown as typeof fetch
 
 describe('recGovAdapter', () => {
   it('maps only "Available" to available', () => {
@@ -65,5 +74,34 @@ describe('recGovAdapter', () => {
       parseRecGovCampgroundId('https://www.recreation.gov/camping/campgrounds/232447'),
     ).toBe('232447')
     expect(parseRecGovCampgroundId('https://example.com/nope')).toBeNull()
+  })
+
+  describe('checkCampgroundWatchable', () => {
+    it('accepts a campground with a 200 availability feed', async () => {
+      expect(await checkCampgroundWatchable('232447', '2026-08', { fetchImpl: fetchWith(true, 200) })).toEqual({
+        watchable: true,
+        reason: 'ok',
+      })
+    })
+
+    it('rejects a 404 facility as not_found (the Gold Bluffs case)', async () => {
+      expect(await checkCampgroundWatchable('232495', '2026-08', { fetchImpl: fetchWith(false, 404) })).toEqual({
+        watchable: false,
+        reason: 'not_found',
+        status: 404,
+      })
+    })
+
+    it('rejects a non-numeric id without any network call', async () => {
+      const spy = jest.fn()
+      const result = await checkCampgroundWatchable('abc', '2026-08', { fetchImpl: spy as unknown as typeof fetch })
+      expect(result).toEqual({ watchable: false, reason: 'not_found', status: 0 })
+      expect(spy).not.toHaveBeenCalled()
+    })
+
+    it('fails open (probe_error) on a 5xx so a blip does not block a valid campground', async () => {
+      const result = await checkCampgroundWatchable('232447', '2026-08', { fetchImpl: fetchWith(false, 503) })
+      expect(result).toMatchObject({ watchable: false, reason: 'probe_error', status: 503 })
+    })
   })
 })
