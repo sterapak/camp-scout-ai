@@ -10,8 +10,11 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { parseCookies, SESSION_COOKIE } from '../auth/cookies.js'
 import { verifySession } from '../auth/jwt.js'
 import { fetchFacilityPhoto } from './ridbMedia.js'
+import { fetchStateCampgrounds } from './ridbFacilities.js'
 
 const PHOTO_RE = /^\/api\/campgrounds\/(\d+)\/photo$/
+const RECGOV_LIST_PATH = '/api/campgrounds/recgov'
+const STATE_RE = /^[A-Za-z]{2}$/
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -23,8 +26,9 @@ export async function handleCampgroundMediaRoutes(
   res: ServerResponse,
 ): Promise<boolean> {
   const pathname = req.url?.split('?')[0] ?? ''
-  const match = PHOTO_RE.exec(pathname)
-  if (!match) return false
+  const photoMatch = PHOTO_RE.exec(pathname)
+  const isList = pathname === RECGOV_LIST_PATH
+  if (!photoMatch && !isList) return false
 
   if ((req.method ?? 'GET') !== 'GET') {
     res.setHeader('Allow', 'GET')
@@ -38,7 +42,17 @@ export async function handleCampgroundMediaRoutes(
     return true
   }
 
-  const photo = await fetchFacilityPhoto(match[1])
+  // Imported Recreation.gov campgrounds for a state (default CA).
+  if (isList) {
+    const stateParam = new URL(req.url ?? '', 'http://localhost').searchParams.get('state')
+    const state = stateParam && STATE_RE.test(stateParam) ? stateParam.toUpperCase() : 'CA'
+    const campgrounds = await fetchStateCampgrounds(state)
+    res.setHeader('Cache-Control', 'private, max-age=86400')
+    sendJson(res, 200, { campgrounds })
+    return true
+  }
+
+  const photo = await fetchFacilityPhoto(photoMatch![1])
   // Cache at the edge/browser: photos are static and the resolver is rate-limited.
   res.setHeader('Cache-Control', 'private, max-age=86400')
   sendJson(res, 200, { photo })
