@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { FiArrowLeft, FiExternalLink, FiMapPin } from 'react-icons/fi'
 import { postSummary, SummaryApiError } from '../api/summaryClient.js'
+import { isApiAvailable } from '../api/apiAuth.js'
+import { isWatchable } from '../utils/recgov.js'
+import WatchCreateForm from '../components/WatchCreateForm.js'
 import AvailabilityNotice from '../components/AvailabilityNotice'
 import CampgroundAiSummary from '../components/CampgroundAiSummary'
 import CampgroundImage from '../components/CampgroundImage'
@@ -25,6 +28,8 @@ export default function CampgroundDetailPage() {
   const [summaryState, setSummaryState] = useState<SummaryPageState>(
     { status: hasKnowledge ? 'loading' : 'idle' },
   )
+  const [showWatch, setShowWatch] = useState(false)
+  const [watchCreated, setWatchCreated] = useState(false)
 
   useEffect(() => {
     if (!campground || !hasKnowledge) {
@@ -163,6 +168,39 @@ export default function CampgroundDetailPage() {
           </a>
         </div>
       </section>
+
+      {isApiAvailable() && isWatchable(campground.reservationUrl) && (
+        <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-3">
+          <h3 className="text-lg font-medium text-gray-900">Watch for cancellations</h3>
+          {watchCreated ? (
+            <p className="text-sm text-green-700">
+              Watch created — you&apos;ll get an SMS if a spot frees up.{' '}
+              <Link to="/watches" className="underline">Manage watches</Link>
+            </p>
+          ) : showWatch ? (
+            <WatchCreateForm
+              prefillName={campground.name}
+              prefillUrl={campground.reservationUrl}
+              onCreated={() => {
+                setWatchCreated(true)
+                setShowWatch(false)
+              }}
+            />
+          ) : (
+            <>
+              <p className="text-sm text-gray-600">
+                Fully booked? Get an SMS the moment someone cancels.
+              </p>
+              <button
+                onClick={() => setShowWatch(true)}
+                className="inline-flex items-center gap-2 rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800"
+              >
+                🔔 Watch this campground
+              </button>
+            </>
+          )}
+        </section>
+      )}
 
       <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-3">
         <h3 className="text-lg font-medium text-gray-900">Amenities</h3>

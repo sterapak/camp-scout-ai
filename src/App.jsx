@@ -4,6 +4,7 @@ import AppShell from './components/AppShell'
 import CampgroundsPage from './pages/CampgroundsPage'
 import CampgroundDetailPage from './pages/CampgroundDetailPage'
 import SettingsPage from './pages/SettingsPage'
+import WatchesPage from './pages/WatchesPage'
 import RetrievalPlaygroundPage from './pages/RetrievalPlaygroundPage'
 import DonationSuccessPage from './pages/DonationSuccessPage'
 import DonationCancelPage from './pages/DonationCancelPage'
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/campgrounds" element={<CampgroundsPage />} />
           <Route path="/campgrounds/:id" element={<CampgroundDetailPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/watches" element={<WatchesPage />} />
           <Route path="/retrieval" element={<RetrievalPlaygroundPage />} />
           <Route path="/support" element={<SupportPage />} />
           <Route path="/donation-success" element={<DonationSuccessPage />} />

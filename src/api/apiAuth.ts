@@ -13,6 +13,15 @@ export function resolveApiToken(): string | null {
   return null
 }
 
+/**
+ * True only when a backend API is reachable — i.e. the runtime token was
+ * injected by the server (Fly). On the static GitHub Pages build there is no
+ * server, so this is false and all API-backed features (Watches) hide.
+ */
+export function isApiAvailable(): boolean {
+  return resolveApiToken() !== null
+}
+
 export function buildApiRequestHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
