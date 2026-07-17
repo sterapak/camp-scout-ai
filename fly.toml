@@ -5,6 +5,7 @@
 #   fly secrets set AI_ENABLED=true OPENAI_ANSWER_PROVIDER=openai OPENAI_API_KEY=... OPENAI_MODEL=gpt-4o-mini
 #   fly secrets set STRIPE_SECRET_KEY=... STRIPE_PUBLISHABLE_KEY=... STRIPE_PRICE_5=... STRIPE_PRICE_10=... STRIPE_PRICE_25=...
 #   fly secrets set APP_URL=https://campscout.terapak.com
+#   Availability watcher (SMS alerts): fly secrets set TWILIO_ACCOUNT_SID=... TWILIO_AUTH_TOKEN=... TWILIO_FROM_NUMBER=+1...
 
 app = 'campscout'
 primary_region = 'sjc'
@@ -17,8 +18,13 @@ primary_region = 'sjc'
   AI_ENABLED = 'false'
   # Explicit daily AI spend cap (also defaulted in code as a safety net).
   AI_DAILY_BUDGET_USD = '5'
-  # SQLite lives on the /data volume (durable AI budget accounting).
+  # SQLite lives on the /data volume (durable AI budget accounting + watches).
   DATABASE_PATH = '/data/campscout.sqlite'
+  # Availability watcher: in-process scheduler that polls Recreation.gov for
+  # cancellations and SMS-alerts (needs the TWILIO_* secrets). Harmless with no
+  # watches configured — it just idles.
+  WATCHER_ENABLED = 'true'
+  WATCH_POLL_INTERVAL_SECONDS = '300'
 
 # SQLite is single-writer, so this app runs as a single stateful machine that
 # stays up (never auto-stopped).

@@ -1,0 +1,246 @@
+/**
+ * Watch scheduler. Runs INSIDE the existing always-on server process (the Fly
+ * machine is single/always-on because SQLite is single-writer, so an in-process
+ * loop is the right fit — no second machine can open the volume). Every tick it:
+ *   1. finds active watches due for a poll,
+ *   2. fetches each needed (facility, month) ONCE — shared across watches —
+ *      through a polite serial loop (spacing + jitter + backoff),
+ *   3. diffs fresh vs. the stored snapshot per watch,
+ *   4. dispatches alerts, and updates each watch's poll status.
+ *
+ * `runOneTick` is exported (and pure w.r.t. injected deps) so tests drive it
+ * directly with a fake fetch + in-memory DB. Guard with WATCHER_ENABLED in the
+ * caller (server/production.mjs).
+ */
+import { createHash, randomUUID } from 'node:crypto'
+
+import { eq } from 'drizzle-orm'
+
+import type { Db } from '../db/index.js'
+import { availabilitySnapshots, watches, type WatchRow } from '../db/schema.js'
+import { fetchMonthAvailability } from './recGovAdapter.js'
+import { diffAvailability } from './diffEngine.js'
+import type { NormalizedAvailability, SiteFilters } from './types.js'
+import { dispatchMatches, type DispatchDeps } from '../notifications/notifyDispatcher.js'
+
+export interface SchedulerOptions {
+  tickMs?: number
+  defaultPollIntervalSeconds?: number
+  fetchSpacingMs?: number
+  fetchImpl?: typeof fetch
+  now?: () => Date
+  dispatchDeps?: DispatchDeps
+  logger?: (msg: string, extra?: Record<string, unknown>) => void
+}
+
+export interface TickSummary {
+  watchesPolled: number
+  fetches: number
+  fetchErrors: number
+  alertsSent: number
+}
+
+const DEFAULT_TICK_MS = 30_000
+const DEFAULT_POLL_INTERVAL_SECONDS = 300
+const DEFAULT_FETCH_SPACING_MS = 2_500
+
+function hashPayload(payload: string): string {
+  return createHash('sha256').update(payload).digest('hex')
+}
+
+function monthKeysBetween(startDate: string, endDate: string): string[] {
+  const out: string[] = []
+  let y = Number(startDate.slice(0, 4))
+  let m = Number(startDate.slice(5, 7))
+  const endY = Number(endDate.slice(0, 4))
+  const endM = Number(endDate.slice(5, 7))
+  while (y < endY || (y === endY && m <= endM)) {
+    out.push(`${y}-${String(m).padStart(2, '0')}`)
+    m += 1
+    if (m > 12) {
+      m = 1
+      y += 1
+    }
+  }
+  return out
+}
+
+function parseFilters(raw: string | null): SiteFilters | null {
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as SiteFilters
+  } catch {
+    return null
+  }
+}
+
+function isDue(watch: WatchRow, now: Date, defaultInterval: number): boolean {
+  if (watch.status !== 'active') return false
+  if (!watch.lastPolledAt) return true
+  const interval = (watch.pollIntervalSeconds ?? defaultInterval) * 1000
+  return now.getTime() - new Date(watch.lastPolledAt).getTime() >= interval
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+const snapshotKey = (facilityId: string, monthKey: string) => `recgov:${facilityId}:${monthKey}`
+
+/** One scheduler pass. Deterministic w.r.t. injected deps for tests. */
+export async function runOneTick(
+  db: Db,
+  options: SchedulerOptions = {},
+): Promise<TickSummary> {
+  const now = options.now ?? (() => new Date())
+  const defaultInterval =
+    options.defaultPollIntervalSeconds ?? DEFAULT_POLL_INTERVAL_SECONDS
+  const spacing = options.fetchSpacingMs ?? DEFAULT_FETCH_SPACING_MS
+  const log = options.logger ?? (() => {})
+  const summary: TickSummary = { watchesPolled: 0, fetches: 0, fetchErrors: 0, alertsSent: 0 }
+
+  const nowDate = now()
+  const today = nowDate.toISOString().slice(0, 10)
+
+  const allWatches = db.select().from(watches).all()
+
+  // Auto-expire watches whose window has passed.
+  for (const w of allWatches) {
+    if (w.status === 'active' && w.endDate < today) {
+      db.update(watches).set({ status: 'expired' }).where(eq(watches.id, w.id)).run()
+    }
+  }
+
+  const due = allWatches.filter(
+    (w) => w.endDate >= today && isDue(w, nowDate, defaultInterval),
+  )
+  if (due.length === 0) return summary
+
+  // Only Recreation.gov in Phase 1.
+  const dueRecgov = due.filter((w) => w.platform === 'recgov')
+
+  // Collect the unique (facility, month) fetches needed across all due watches.
+  const needed = new Map<string, { facilityId: string; monthKey: string }>()
+  for (const w of dueRecgov) {
+    for (const monthKey of monthKeysBetween(w.startDate, w.endDate)) {
+      // Skip months already fully in the past.
+      if (monthKey < today.slice(0, 7)) continue
+      needed.set(snapshotKey(w.facilityId, monthKey), {
+        facilityId: w.facilityId,
+        monthKey,
+      })
+    }
+  }
+
+  // Polite serial fetch. results: key -> { prev, fresh } (fresh null on error).
+  const results = new Map<
+    string,
+    { prev: NormalizedAvailability | null; fresh: NormalizedAvailability | null }
+  >()
+  let first = true
+  for (const { facilityId, monthKey } of needed.values()) {
+    if (!first) await sleep(spacing + Math.floor(Math.random() * spacing * 0.4))
+    first = false
+
+    const key = snapshotKey(facilityId, monthKey)
+    const prevRow = db
+      .select()
+      .from(availabilitySnapshots)
+      .where(eq(availabilitySnapshots.snapshotKey, key))
+      .get()
+    const prev: NormalizedAvailability | null = prevRow
+      ? (JSON.parse(prevRow.payload) as NormalizedAvailability)
+      : null
+
+    summary.fetches += 1
+    const res = await fetchMonthAvailability(facilityId, monthKey, {
+      fetchImpl: options.fetchImpl,
+    })
+    if (!res.ok || !res.availability) {
+      summary.fetchErrors += 1
+      log('watch_fetch_error', { facilityId, monthKey, status: res.status, error: res.error })
+      results.set(key, { prev, fresh: null })
+      // Simple backoff: extra pause after an error so we don't hammer.
+      await sleep(spacing)
+      continue
+    }
+
+    const payload = JSON.stringify(res.availability)
+    const payloadHash = hashPayload(payload)
+    db.insert(availabilitySnapshots)
+      .values({ snapshotKey: key, platform: 'recgov', facilityId, monthKey, payload, payloadHash })
+      .onConflictDoUpdate({
+        target: availabilitySnapshots.snapshotKey,
+        set: {
+          payload,
+          payloadHash,
+          fetchedAt: new Date().toISOString().replace('Z', 'Z'),
+        },
+      })
+      .run()
+    results.set(key, { prev, fresh: res.availability })
+  }
+
+  // Diff + dispatch per watch.
+  for (const w of dueRecgov) {
+    summary.watchesPolled += 1
+    let hadError = false
+    const filters = parseFilters(w.siteFilters)
+
+    for (const monthKey of monthKeysBetween(w.startDate, w.endDate)) {
+      if (monthKey < today.slice(0, 7)) continue
+      const r = results.get(snapshotKey(w.facilityId, monthKey))
+      if (!r || r.fresh === null) {
+        hadError = true
+        continue
+      }
+      const matches = diffAvailability(r.prev, r.fresh, {
+        startDate: w.startDate < today ? today : w.startDate,
+        endDate: w.endDate,
+        minNights: w.minNights,
+        filters,
+      })
+      if (matches.length > 0) {
+        const disp = await dispatchMatches(db, w, matches, options.dispatchDeps)
+        summary.alertsSent += disp.sent
+        if (disp.sent > 0) log('watch_alerts_sent', { watchId: w.id, count: disp.sent })
+      }
+    }
+
+    db.update(watches)
+      .set({
+        lastPolledAt: nowDate.toISOString(),
+        lastPollStatus: hadError ? 'error: fetch failed' : 'ok',
+      })
+      .where(eq(watches.id, w.id))
+      .run()
+  }
+
+  return summary
+}
+
+/** Start the recurring scheduler. Returns a stop handle. */
+export function startWatchScheduler(
+  db: Db,
+  options: SchedulerOptions = {},
+): { stop: () => void } {
+  const tickMs = options.tickMs ?? DEFAULT_TICK_MS
+  const log = options.logger ?? (() => {})
+  let running = false
+
+  const timer = setInterval(() => {
+    if (running) return // no overlapping ticks (SQLite single-writer)
+    running = true
+    void runOneTick(db, options)
+      .then((s) => {
+        if (s.watchesPolled > 0) log('watch_tick', { ...s })
+      })
+      .catch((err) => log('watch_tick_error', { error: String(err) }))
+      .finally(() => {
+        running = false
+      })
+  }, tickMs)
+  if (typeof timer.unref === 'function') timer.unref()
+
+  log('watch_scheduler_started', { tickMs })
+  return {
+    stop: () => clearInterval(timer),
+  }
+}
