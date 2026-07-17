@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url'
 import { createAskRouteMiddleware } from '../src/server/api/askRoute.js'
 import { handleAuthRoutes } from '../src/server/auth/authRoutes.js'
 import { handleCampgroundMediaRoutes } from '../src/server/campgrounds/campgroundMediaRoute.js'
+import { handleSmsStatusRoute } from '../src/server/notifications/smsStatusRoute.js'
 import { handleWatchRoutes } from '../src/server/api/watchRoute.js'
 import { startWatchScheduler } from '../src/server/availability/scheduler.js'
 import { getDb } from '../src/server/db/index.js'
@@ -153,6 +154,11 @@ const server = createServer(async (req, res) => {
 
   // Official campground photos (RIDB), session-gated, no DB.
   if (await handleCampgroundMediaRoutes(req, res)) {
+    return
+  }
+
+  // SMS delivery-status diagnostic.
+  if (await handleSmsStatusRoute(req, res)) {
     return
   }
 
