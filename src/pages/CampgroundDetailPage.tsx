@@ -3,7 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { FiArrowLeft, FiExternalLink, FiMapPin } from 'react-icons/fi'
 import { postSummary, SummaryApiError } from '../api/summaryClient.js'
 import { isApiAvailable } from '../api/apiAuth.js'
-import { isWatchable } from '../utils/recgov.js'
+import { isWatchable, parseRecGovCampgroundId } from '../utils/recgov.js'
+import { fetchCampgroundPhoto, type CampgroundPhoto } from '../api/campgroundMediaClient.js'
 import WatchCreateForm from '../components/WatchCreateForm.js'
 import AvailabilityNotice from '../components/AvailabilityNotice'
 import CampgroundAiSummary from '../components/CampgroundAiSummary'
@@ -30,6 +31,24 @@ export default function CampgroundDetailPage() {
   )
   const [showWatch, setShowWatch] = useState(false)
   const [watchCreated, setWatchCreated] = useState(false)
+  const [officialPhoto, setOfficialPhoto] = useState<CampgroundPhoto | null>(null)
+
+  // When there's no curated image, try the official Recreation.gov photo (RIDB).
+  // Only recreation.gov campgrounds have a facility id to resolve.
+  useEffect(() => {
+    setOfficialPhoto(null)
+    if (!campground || getPrimaryImage(campground)) return undefined
+    const facilityId = parseRecGovCampgroundId(campground.reservationUrl)
+    if (!facilityId || !isApiAvailable()) return undefined
+
+    let cancelled = false
+    fetchCampgroundPhoto(facilityId).then((photo) => {
+      if (!cancelled) setOfficialPhoto(photo)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [campground])
 
   useEffect(() => {
     if (!campground || !hasKnowledge) {
@@ -97,7 +116,7 @@ export default function CampgroundDetailPage() {
     )
   }
 
-  const primaryImage = getPrimaryImage(campground)
+  const primaryImage = getPrimaryImage(campground) ?? officialPhoto
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">

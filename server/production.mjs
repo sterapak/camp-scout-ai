@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url'
 
 import { createAskRouteMiddleware } from '../src/server/api/askRoute.js'
 import { handleAuthRoutes } from '../src/server/auth/authRoutes.js'
+import { handleCampgroundMediaRoutes } from '../src/server/campgrounds/campgroundMediaRoute.js'
 import { handleWatchRoutes } from '../src/server/api/watchRoute.js'
 import { startWatchScheduler } from '../src/server/availability/scheduler.js'
 import { getDb } from '../src/server/db/index.js'
@@ -147,6 +148,11 @@ const server = createServer(async (req, res) => {
 
   // Auth routes: /auth/google, /auth/google/callback, /auth/logout, /auth/me.
   if (await handleAuthRoutes(req, res)) {
+    return
+  }
+
+  // Official campground photos (RIDB), session-gated, no DB.
+  if (await handleCampgroundMediaRoutes(req, res)) {
     return
   }
 
