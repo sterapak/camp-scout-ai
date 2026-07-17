@@ -2,7 +2,7 @@
  * Watches page: create + manage campground cancellation watches and see recent
  * alerts. Backed by /api/watches, /api/alerts. Hidden on the static build (no API).
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { isApiAvailable } from '../api/apiAuth.js'
 import {
@@ -15,6 +15,17 @@ import {
   type Watch,
 } from '../api/watchClient.js'
 import WatchCreateForm from '../components/WatchCreateForm.js'
+import { getAllCampgrounds } from '../data/campgroundData.js'
+import { isWatchable } from '../utils/recgov.js'
+
+interface WatchableCampground {
+  id: string
+  name: string
+  region: string
+  reservationUrl: string
+}
+
+const OTHER = '__other__'
 
 const card = 'rounded-lg border border-gray-200 bg-white p-6 shadow-sm'
 
@@ -36,8 +47,18 @@ export default function WatchesPage() {
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [error, setError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState('')
 
   const apiAvailable = isApiAvailable()
+
+  const watchable = useMemo(
+    () =>
+      (getAllCampgrounds() as WatchableCampground[])
+        .filter((c) => isWatchable(c.reservationUrl))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [],
+  )
+  const selectedCampground = watchable.find((c) => c.id === selectedId)
 
   const load = useCallback(async () => {
     setError(null)
@@ -102,7 +123,58 @@ export default function WatchesPage() {
 
       <section className={card}>
         <h3 className="mb-4 text-lg font-semibold text-gray-900">Watch a campground</h3>
-        <WatchCreateForm onCreated={() => void load()} />
+        <div className="space-y-4">
+          <div>
+            <label
+              className="mb-1 block text-sm font-medium text-gray-700"
+              htmlFor="watch-campground"
+            >
+              Campground
+            </label>
+            <select
+              id="watch-campground"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+              value={selectedId}
+              onChange={(e) => setSelectedId(e.target.value)}
+            >
+              <option value="">Choose a campground…</option>
+              {watchable.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} — {c.region}
+                </option>
+              ))}
+              <option value={OTHER}>Other — paste a Recreation.gov link…</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Recreation.gov campgrounds only for now. You can also open a campground from{' '}
+              <a className="text-green-700 underline" href="/campgrounds">
+                Browse Campgrounds
+              </a>{' '}
+              and hit “Watch this campground”.
+            </p>
+          </div>
+
+          {selectedCampground && (
+            <WatchCreateForm
+              key={selectedCampground.id}
+              prefillName={selectedCampground.name}
+              prefillUrl={selectedCampground.reservationUrl}
+              onCreated={() => {
+                setSelectedId('')
+                void load()
+              }}
+            />
+          )}
+          {selectedId === OTHER && (
+            <WatchCreateForm
+              key={OTHER}
+              onCreated={() => {
+                setSelectedId('')
+                void load()
+              }}
+            />
+          )}
+        </div>
       </section>
 
       <section className="space-y-3">

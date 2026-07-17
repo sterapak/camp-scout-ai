@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 import WatchesPage from './WatchesPage'
@@ -50,7 +50,12 @@ describe('WatchesPage', () => {
 
     await waitFor(() => expect(screen.getByText('Upper Pines')).toBeInTheDocument())
     expect(screen.getByText(/2026-11-15/)).toBeInTheDocument()
-    expect(screen.getByText('create-form')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /pause/i })).toBeInTheDocument()
+
+    // The create form is not shown until a campground is picked — the page now
+    // drives watch creation off the app's own campground list, not free text.
+    expect(screen.queryByText('create-form')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Campground'), { target: { value: '__other__' } })
+    expect(screen.getByText('create-form')).toBeInTheDocument()
   })
 })
