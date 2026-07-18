@@ -30,6 +30,8 @@ export interface SchedulerOptions {
   fetchImpl?: typeof fetch
   now?: () => Date
   dispatchDeps?: DispatchDeps
+  /** Backstop: max SMS-sending watches per tick (guards against any fan-out bug). */
+  maxSmsPerTick?: number
   logger?: (msg: string, extra?: Record<string, unknown>) => void
 }
 
@@ -43,6 +45,7 @@ export interface TickSummary {
 const DEFAULT_TICK_MS = 30_000
 const DEFAULT_POLL_INTERVAL_SECONDS = 300
 const DEFAULT_FETCH_SPACING_MS = 2_500
+const DEFAULT_MAX_SMS_PER_TICK = 10
 
 function hashPayload(payload: string): string {
   return createHash('sha256').update(payload).digest('hex')
@@ -101,6 +104,9 @@ export async function runOneTick(
   const defaultInterval =
     options.defaultPollIntervalSeconds ?? DEFAULT_POLL_INTERVAL_SECONDS
   const spacing = options.fetchSpacingMs ?? DEFAULT_FETCH_SPACING_MS
+  const maxSmsPerTick =
+    options.maxSmsPerTick ??
+    (Number(process.env.WATCH_MAX_SMS_PER_TICK) || DEFAULT_MAX_SMS_PER_TICK)
   const log = options.logger ?? (() => {})
   const summary: TickSummary = { watchesPolled: 0, fetches: 0, fetchErrors: 0, alertsSent: 0 }
 
@@ -211,10 +217,12 @@ export async function runOneTick(
         minNights: w.minNights,
         filters,
       })
-      if (matches.length > 0) {
+      if (matches.length > 0 && summary.alertsSent < maxSmsPerTick) {
         const disp = await dispatchMatches(db, w, matches, options.dispatchDeps)
         summary.alertsSent += disp.sent
         if (disp.sent > 0) log('watch_alerts_sent', { watchId: w.id, count: disp.sent })
+      } else if (matches.length > 0) {
+        log('watch_sms_cap_reached', { watchId: w.id, cap: maxSmsPerTick })
       }
     }
 

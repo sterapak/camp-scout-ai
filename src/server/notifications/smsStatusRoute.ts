@@ -48,7 +48,9 @@ export async function handleSmsStatusRoute(
     return true
   }
 
-  const result = await listRecentMessages({ to: phone, limit: 5 })
+  const limitParam = Number(new URL(req.url ?? '', 'http://localhost').searchParams.get('limit'))
+  const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 5
+  const result = await listRecentMessages({ to: phone, limit })
   sendJson(res, 200, { configured: true, phone, ...result })
   return true
 }
