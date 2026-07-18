@@ -114,6 +114,15 @@ export async function handleWatchRoutes(
           })
           return true
         }
+        // ReserveCalifornia's backend (Tyler) 403s our datacenter IP, so watches
+        // would silently fail. Gated off unless run from an un-blocked IP.
+        if (platform === 'reservecalifornia' && process.env.RESERVECALIFORNIA_ENABLED !== 'true') {
+          sendJson(res, 400, {
+            error:
+              'ReserveCalifornia watching is disabled — their provider blocks our server IP. Recreation.gov campgrounds work.',
+          })
+          return true
+        }
         if (!facilityId || !campgroundName || !DATE_RE.test(startDate) || !DATE_RE.test(endDate)) {
           sendJson(res, 400, {
             error:
