@@ -14,6 +14,7 @@ import { buildCampgroundLink, buildSiteDeepLink } from '../availability/recGovAd
 import type { WatchMatch } from '../availability/diffEngine.js'
 import { sendSms, twilioConfigured, type SendSmsDeps } from './twilioSmsSender.js'
 import { emailConfigured, sendEmail, type SendEmailDeps } from './emailSender.js'
+import { pushoverConfigured, sendPushover, type SendPushoverDeps } from './pushoverSender.js'
 
 /** Global kill-switch: set WATCH_SMS_ENABLED=false to stop all SMS sends. */
 function smsSendingEnabled(): boolean {
@@ -29,6 +30,7 @@ export interface DispatchResult {
 export interface DispatchDeps {
   smsDeps?: SendSmsDeps
   emailDeps?: SendEmailDeps
+  pushoverDeps?: SendPushoverDeps
   /** Override deep-link builder (Phase 2 RC uses a different one). */
   deepLinkFor?: (platform: string, siteId: string) => string
 }
@@ -104,9 +106,11 @@ export async function dispatchMatches(
     twilioConfigured(deps.smsDeps)
   const canEmail =
     owner.emailEnabled && Boolean(owner.email) && emailConfigured(deps.emailDeps)
+  // Pushover is a single-recipient global channel (no per-user pref yet).
+  const canPush = pushoverConfigured(deps.pushoverDeps)
 
   // Exactly ONE message per channel for the whole batch — never one per site-night.
-  const { body } = formatBatchMessage(watch, fresh.map((f) => f.match), deps)
+  const { body, deepLink } = formatBatchMessage(watch, fresh.map((f) => f.match), deps)
   const firedChannels: string[] = []
 
   if (canSms) {
@@ -119,6 +123,16 @@ export async function dispatchMatches(
     const subject = `🏕 Cancellation alert: ${watch.campgroundName}`
     const res = await sendEmail(owner.email as string, subject, body, deps.emailDeps)
     firedChannels.push('email')
+    if (res.ok) result.sent += 1
+    else result.failed += 1
+  }
+  if (canPush) {
+    const res = await sendPushover(
+      body,
+      { title: `🏕 ${watch.campgroundName}`, url: deepLink, urlTitle: 'Book on Recreation.gov' },
+      deps.pushoverDeps,
+    )
+    firedChannels.push('push')
     if (res.ok) result.sent += 1
     else result.failed += 1
   }

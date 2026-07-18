@@ -15,6 +15,7 @@ import { userSettings } from '../db/schema.js'
 import { requireUser } from '../auth/authRoutes.js'
 import { listRecentMessages, sendSms, toE164, twilioConfigured } from './twilioSmsSender.js'
 import { emailConfigured, sendEmail } from './emailSender.js'
+import { pushoverConfigured, sendPushover } from './pushoverSender.js'
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -29,10 +30,11 @@ export async function handleSmsStatusRoute(
   const isStatus = path === '/api/sms/status'
   const isTest = path === '/api/sms/test'
   const isEmailTest = path === '/api/email/test'
-  if (!isStatus && !isTest && !isEmailTest) return false
+  const isPushTest = path === '/api/pushover/test'
+  if (!isStatus && !isTest && !isEmailTest && !isPushTest) return false
 
   const method = req.method ?? 'GET'
-  const wantsPost = isTest || isEmailTest
+  const wantsPost = isTest || isEmailTest || isPushTest
   if ((isStatus && method !== 'GET') || (wantsPost && method !== 'POST')) {
     res.setHeader('Allow', isStatus ? 'GET' : 'POST')
     sendJson(res, 405, { error: 'Method not allowed.' })
@@ -42,6 +44,19 @@ export async function handleSmsStatusRoute(
   const user = requireUser(req)
   if (!user) {
     sendJson(res, 401, { error: 'Sign in required.' })
+    return true
+  }
+
+  // POST /api/pushover/test — send a test push notification.
+  if (isPushTest) {
+    if (!pushoverConfigured()) {
+      sendJson(res, 200, { ok: false, error: 'Pushover not configured (set PUSHOVER_APP_TOKEN + PUSHOVER_USER_KEY).' })
+      return true
+    }
+    const result = await sendPushover('Your Camp Scout cancellation alerts are working. 🏕', {
+      title: '🏕 Camp Scout AI test',
+    })
+    sendJson(res, 200, { ok: result.ok, error: result.error ?? null })
     return true
   }
 

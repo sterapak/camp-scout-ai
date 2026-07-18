@@ -19,6 +19,26 @@ export default function NotifySettings() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'saving'>('loading')
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<string | null>(null)
+
+  async function sendTestPush() {
+    setTestResult(null)
+    setTesting(true)
+    try {
+      const res = await fetch('/api/pushover/test', { method: 'POST', credentials: 'same-origin' })
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+      setTestResult(
+        data.ok
+          ? 'Sent — check your phone for the push notification. 🏕'
+          : `Not sent: ${data.error ?? 'Pushover not set up yet.'}`,
+      )
+    } catch {
+      setTestResult('Could not reach the server.')
+    } finally {
+      setTesting(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -110,13 +130,23 @@ export default function NotifySettings() {
       {message && <p className="text-sm text-green-700">{message}</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <button
-        onClick={() => void save()}
-        disabled={status === 'saving' || status === 'loading'}
-        className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800 disabled:opacity-60"
-      >
-        {status === 'saving' ? 'Saving…' : 'Save'}
-      </button>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => void save()}
+          disabled={status === 'saving' || status === 'loading'}
+          className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800 disabled:opacity-60"
+        >
+          {status === 'saving' ? 'Saving…' : 'Save'}
+        </button>
+        <button
+          onClick={() => void sendTestPush()}
+          disabled={testing}
+          className="rounded-md border border-green-700 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-50 disabled:opacity-60"
+        >
+          {testing ? 'Sending…' : 'Send test push'}
+        </button>
+      </div>
+      {testResult && <p className="text-sm text-gray-600">{testResult}</p>}
     </section>
   )
 }
