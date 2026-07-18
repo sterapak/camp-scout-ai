@@ -18,6 +18,22 @@ import WatchCampgroundPicker from '../components/WatchCampgroundPicker.js'
 
 const card = 'rounded-lg border border-gray-200 bg-white p-6 shadow-sm'
 
+const DAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+/** Human label for a watch's weekday filter, or null when it's any day. */
+function weekdayLabel(siteFilters: string | null): string | null {
+  if (!siteFilters) return null
+  try {
+    const wd = (JSON.parse(siteFilters) as { weekdays?: number[] }).weekdays
+    if (!Array.isArray(wd) || wd.length === 0 || wd.length >= 7) return null
+    const sorted = [...wd].sort((a, b) => a - b)
+    if (sorted.length === 2 && sorted[0] === 5 && sorted[1] === 6) return 'Weekends'
+    return sorted.map((d) => DAY_ABBR[d]).join(', ')
+  } catch {
+    return null
+  }
+}
+
 function StatusBadge({ status }: { status: Watch['status'] }) {
   const styles: Record<Watch['status'], string> = {
     active: 'bg-green-100 text-green-800',
@@ -123,6 +139,7 @@ export default function WatchesPage() {
               <div className="text-sm text-gray-600">
                 {w.startDate} → {w.endDate}
                 {w.minNights > 1 ? ` · ${w.minNights}+ nights` : ''}
+                {weekdayLabel(w.siteFilters) ? ` · ${weekdayLabel(w.siteFilters)}` : ''}
               </div>
               <div className="text-xs text-gray-400">
                 {w.lastPolledAt

@@ -28,6 +28,20 @@ export interface WatchRouteDeps {
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
+/**
+ * Keep only a valid weekday filter (ints 0–6). An empty or all-7 set means "any
+ * day" -> null, which also avoids the footgun where an invalid set would block
+ * every match. Other site-filter fields aren't used by the UI yet.
+ */
+function sanitizeSiteFilters(raw: unknown): { weekdays: number[] } | null {
+  if (!raw || typeof raw !== 'object') return null
+  const weekdays = (raw as { weekdays?: unknown }).weekdays
+  if (!Array.isArray(weekdays)) return null
+  const clean = [...new Set(weekdays.map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6))]
+  if (clean.length === 0 || clean.length >= 7) return null
+  return { weekdays: clean.sort() }
+}
+
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
   res.end(JSON.stringify(body))
@@ -124,6 +138,8 @@ export async function handleWatchRoutes(
         // A transient probe error (5xx/network) falls through — fail open; the
         // poller will retry rather than block a valid campground on a blip.
 
+        const siteFilters = sanitizeSiteFilters(body.siteFilters)
+
         const id = randomUUID()
         db.insert(watches)
           .values({
@@ -135,7 +151,7 @@ export async function handleWatchRoutes(
             startDate,
             endDate,
             minNights: Number(body.minNights) > 0 ? Number(body.minNights) : 1,
-            siteFilters: body.siteFilters ? JSON.stringify(body.siteFilters) : null,
+            siteFilters: siteFilters ? JSON.stringify(siteFilters) : null,
             status: 'active',
           })
           .run()

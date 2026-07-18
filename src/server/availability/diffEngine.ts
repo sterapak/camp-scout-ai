@@ -50,6 +50,17 @@ function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+/** 0=Sunday … 6=Saturday for a 'YYYY-MM-DD' date. */
+function weekdayOf(date: string): number {
+  return new Date(`${date}T00:00:00Z`).getUTCDay()
+}
+
+/** A weekday filter of [] or all-7 means "any day". */
+function passesWeekday(date: string, weekdays?: number[]): boolean {
+  if (!weekdays || weekdays.length === 0 || weekdays.length >= 7) return true
+  return weekdays.includes(weekdayOf(date))
+}
+
 /** Consecutive available nights starting at `date` (bounded by endDate). */
 function consecutiveAvailable(
   site: NormalizedSite,
@@ -78,6 +89,7 @@ export function diffAvailability(
     for (const [date, status] of Object.entries(site.dates)) {
       if (status !== 'available') continue
       if (date < c.startDate || date > c.endDate) continue
+      if (!passesWeekday(date, c.filters?.weekdays)) continue
 
       // Only NEWLY available: prev missing (first snapshot) or prev != available.
       const prevStatus = prev?.[site.siteId]?.dates?.[date]

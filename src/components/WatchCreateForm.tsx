@@ -17,6 +17,16 @@ interface WatchCreateFormProps {
 
 const todayIso = () => new Date().toISOString().slice(0, 10)
 
+const DAY_LABELS = [
+  { n: 0, l: 'Sun' },
+  { n: 1, l: 'Mon' },
+  { n: 2, l: 'Tue' },
+  { n: 3, l: 'Wed' },
+  { n: 4, l: 'Thu' },
+  { n: 5, l: 'Fri' },
+  { n: 6, l: 'Sat' },
+]
+
 export default function WatchCreateForm({
   prefillName,
   prefillUrl,
@@ -27,8 +37,15 @@ export default function WatchCreateForm({
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [minNights, setMinNights] = useState(1)
+  const [weekdays, setWeekdays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  function toggleDay(day: number) {
+    setWeekdays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort(),
+    )
+  }
 
   const fixedUrl = Boolean(prefillUrl)
 
@@ -42,6 +59,7 @@ export default function WatchCreateForm({
     }
     if (!startDate || !endDate) return setError('Pick a start and end date.')
     if (endDate < startDate) return setError('End date must be on or after the start date.')
+    if (weekdays.length === 0) return setError('Pick at least one day of the week to watch.')
 
     setSubmitting(true)
     try {
@@ -51,6 +69,7 @@ export default function WatchCreateForm({
         startDate,
         endDate,
         minNights: Math.max(1, minNights),
+        weekdays,
       })
       if (!fixedUrl) {
         setName('')
@@ -59,6 +78,7 @@ export default function WatchCreateForm({
       setStartDate('')
       setEndDate('')
       setMinNights(1)
+      setWeekdays([0, 1, 2, 3, 4, 5, 6])
       onCreated?.(watch)
     } catch (err) {
       setError(err instanceof WatchApiError ? err.message : 'Could not create the watch.')
@@ -136,6 +156,49 @@ export default function WatchCreateForm({
           value={minNights}
           onChange={(e) => setMinNights(Number(e.target.value) || 1)}
         />
+      </div>
+
+      <div>
+        <label className={label}>Which nights?</label>
+        <div className="flex flex-wrap gap-1.5">
+          {DAY_LABELS.map((d) => {
+            const on = weekdays.includes(d.n)
+            return (
+              <button
+                key={d.n}
+                type="button"
+                onClick={() => toggleDay(d.n)}
+                aria-pressed={on}
+                className={`rounded-md border px-2.5 py-1 text-xs font-medium transition ${
+                  on
+                    ? 'border-green-600 bg-green-600 text-white'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {d.l}
+              </button>
+            )
+          })}
+        </div>
+        <div className="mt-1.5 flex gap-3 text-xs">
+          <button
+            type="button"
+            className="text-green-700 underline"
+            onClick={() => setWeekdays([0, 1, 2, 3, 4, 5, 6])}
+          >
+            Any day
+          </button>
+          <button
+            type="button"
+            className="text-green-700 underline"
+            onClick={() => setWeekdays([5, 6])}
+          >
+            Weekends (Fri–Sat)
+          </button>
+        </div>
+        <p className="mt-1 text-xs text-gray-500">
+          Only alert when a cancellation frees a night on the selected days.
+        </p>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}

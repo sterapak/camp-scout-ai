@@ -33,6 +33,8 @@ export interface SiteFilters {
   loops?: string[]
   siteIds?: string[]
   minPeople?: number
+  /** Only alert for freed nights on these weekdays (0=Sun … 6=Sat). Empty/absent = any day. */
+  weekdays?: number[]
 }
 
 export type Platform = 'recgov' | 'reservecalifornia'

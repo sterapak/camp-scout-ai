@@ -26,6 +26,8 @@ export interface Watch {
   status: 'active' | 'paused' | 'expired'
   lastPolledAt: string | null
   lastPollStatus: string | null
+  /** JSON blob of per-watch match filters (e.g. {"weekdays":[5,6]}). */
+  siteFilters: string | null
   createdAt: string
 }
 
@@ -57,6 +59,8 @@ export interface CreateWatchInput {
   endDate: string
   minNights?: number
   platform?: string
+  /** Only alert for freed nights on these weekdays (0=Sun … 6=Sat). Omit/all = any. */
+  weekdays?: number[]
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -77,9 +81,15 @@ export async function listWatches(): Promise<Watch[]> {
 }
 
 export async function createWatch(input: CreateWatchInput): Promise<Watch> {
+  const { weekdays, ...rest } = input
+  const body: Record<string, unknown> = { platform: 'recgov', ...rest }
+  // Send weekdays as a site filter only when it's a real subset (1–6 days).
+  if (weekdays && weekdays.length > 0 && weekdays.length < 7) {
+    body.siteFilters = { weekdays }
+  }
   const data = await request<{ watch: Watch }>('/api/watches', {
     method: 'POST',
-    body: JSON.stringify({ platform: 'recgov', ...input }),
+    body: JSON.stringify(body),
   })
   return data.watch
 }

@@ -57,4 +57,22 @@ describe('diffAvailability', () => {
     expect(m).toHaveLength(1)
     expect(m[0].nights).toBeGreaterThanOrEqual(2)
   })
+
+  it('respects a weekday filter (e.g. weekends only)', () => {
+    const date = '2026-08-10'
+    const dow = new Date(`${date}T00:00:00Z`).getUTCDay()
+    const fresh = site('A', { [date]: 'available' })
+
+    // Only the freed night's own weekday matches.
+    expect(diffAvailability(null, fresh, { ...range, filters: { weekdays: [dow] } })).toHaveLength(1)
+    expect(
+      diffAvailability(null, fresh, { ...range, filters: { weekdays: [(dow + 1) % 7] } }),
+    ).toHaveLength(0)
+
+    // Empty or all-7 means "any day".
+    expect(diffAvailability(null, fresh, { ...range, filters: { weekdays: [] } })).toHaveLength(1)
+    expect(
+      diffAvailability(null, fresh, { ...range, filters: { weekdays: [0, 1, 2, 3, 4, 5, 6] } }),
+    ).toHaveLength(1)
+  })
 })
