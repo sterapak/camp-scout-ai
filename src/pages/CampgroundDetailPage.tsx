@@ -10,6 +10,7 @@ import AvailabilityNotice from '../components/AvailabilityNotice'
 import CampgroundAiSummary from '../components/CampgroundAiSummary'
 import CampgroundImage from '../components/CampgroundImage'
 import { getCampgroundById, getPrimaryImage } from '../data/campgroundData'
+import { loadImportedCampgrounds, type DisplayCampground } from '../data/mergedCampgrounds'
 import { getKnowledgeCampgroundIds } from '../data/knowledge/documents.js'
 
 import type { Citation, UniqueSourceReference, AnswerConfidenceLevel, SummarySectionContent } from '../shared/types/api.js'
@@ -24,8 +25,29 @@ type SummaryPageState =
 
 export default function CampgroundDetailPage() {
   const { id } = useParams()
-  const campground = getCampgroundById(id)
+  const staticCampground = getCampgroundById(id)
+  const [importedCampground, setImportedCampground] = useState<DisplayCampground | null>(null)
+  const [resolving, setResolving] = useState(!staticCampground)
+  const campground = staticCampground ?? importedCampground
   const hasKnowledge = getKnowledgeCampgroundIds().includes(id ?? '')
+
+  // Fall back to the Recreation.gov-imported set for campgrounds not curated.
+  useEffect(() => {
+    if (staticCampground) {
+      setResolving(false)
+      return undefined
+    }
+    let cancelled = false
+    setResolving(true)
+    loadImportedCampgrounds().then((list) => {
+      if (cancelled) return
+      setImportedCampground(list.find((c) => c.id === id) ?? null)
+      setResolving(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [id, staticCampground])
   const [summaryState, setSummaryState] = useState<SummaryPageState>(
     { status: hasKnowledge ? 'loading' : 'idle' },
   )
@@ -111,7 +133,7 @@ export default function CampgroundDetailPage() {
           <FiArrowLeft className="mr-1" />
           Back to campgrounds
         </Link>
-        <p className="text-gray-600">Campground not found.</p>
+        <p className="text-gray-600">{resolving ? 'Loading…' : 'Campground not found.'}</p>
       </div>
     )
   }
@@ -158,10 +180,12 @@ export default function CampgroundDetailPage() {
 
       <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-4">
         <h3 className="text-lg font-medium text-gray-900">About</h3>
-        <p className="text-gray-700">{campground.notes}</p>
-        <p className="text-xs text-gray-500">
-          Last verified: {campground.lastVerifiedAt}
+        <p className="text-gray-700">
+          {campground.notes || 'Recreation.gov campground. See the official page for full details.'}
         </p>
+        {campground.lastVerifiedAt && (
+          <p className="text-xs text-gray-500">Last verified: {campground.lastVerifiedAt}</p>
+        )}
       </section>
 
       <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-3">
@@ -221,42 +245,50 @@ export default function CampgroundDetailPage() {
         </section>
       )}
 
-      <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-3">
-        <h3 className="text-lg font-medium text-gray-900">Amenities</h3>
-        <ul className="list-disc list-inside text-gray-700 space-y-1">
-          {campground.amenities.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </section>
+      {campground.amenities.length > 0 && (
+        <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-3">
+          <h3 className="text-lg font-medium text-gray-900">Amenities</h3>
+          <ul className="list-disc list-inside text-gray-700 space-y-1">
+            {campground.amenities.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </section>
+      )}
 
-      <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-3">
-        <h3 className="text-lg font-medium text-gray-900">Rules</h3>
-        <ul className="list-disc list-inside text-gray-700 space-y-1">
-          {campground.rules.map((rule) => (
-            <li key={rule}>{rule}</li>
-          ))}
-        </ul>
-      </section>
+      {campground.rules.length > 0 && (
+        <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-3">
+          <h3 className="text-lg font-medium text-gray-900">Rules</h3>
+          <ul className="list-disc list-inside text-gray-700 space-y-1">
+            {campground.rules.map((rule) => (
+              <li key={rule}>{rule}</li>
+            ))}
+          </ul>
+        </section>
+      )}
 
-      <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-3">
-        <h3 className="text-lg font-medium text-gray-900">Dog Policy</h3>
-        <p className="text-gray-700">{campground.dogPolicy}</p>
-      </section>
+      {campground.dogPolicy && (
+        <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-3">
+          <h3 className="text-lg font-medium text-gray-900">Dog Policy</h3>
+          <p className="text-gray-700">{campground.dogPolicy}</p>
+        </section>
+      )}
 
-      <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-3">
-        <h3 className="text-lg font-medium text-gray-900">Tags</h3>
-        <div className="flex flex-wrap gap-2">
-          {campground.tags.map((t) => (
-            <span
-              key={t}
-              className="rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-800"
-            >
-              {t}
-            </span>
-          ))}
-        </div>
-      </section>
+      {campground.tags.length > 0 && (
+        <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-3">
+          <h3 className="text-lg font-medium text-gray-900">Tags</h3>
+          <div className="flex flex-wrap gap-2">
+            {campground.tags.map((t) => (
+              <span
+                key={t}
+                className="rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-800"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

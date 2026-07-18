@@ -133,8 +133,12 @@ describe('CampgroundDetailPage', () => {
     )
   })
 
-  it('shows not found for unknown id', () => {
+  it('shows not found for unknown id', async () => {
     renderDetail('unknown-campground')
-    expect(screen.getByText('Campground not found.')).toBeInTheDocument()
+    // Not curated -> tries the Recreation.gov-imported set (empty in tests),
+    // then resolves to not-found.
+    await waitFor(() =>
+      expect(screen.getByText('Campground not found.')).toBeInTheDocument(),
+    )
   })
 })

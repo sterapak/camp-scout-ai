@@ -5,11 +5,16 @@ import DonationCard from '../components/DonationCard'
 import CampgroundFilters from '../components/CampgroundFilters'
 import CampgroundList from '../components/CampgroundList'
 import {
+  filterCampgrounds,
   getAllAmenities,
-  getAllRegions,
   getAllTags,
-  searchCampgrounds,
 } from '../data/campgroundData'
+import {
+  curatedCampgrounds,
+  loadImportedCampgrounds,
+  mergeCampgrounds,
+  type DisplayCampground,
+} from '../data/mergedCampgrounds'
 
 /** @param {URLSearchParams} searchParams @param {string} key */
 function readMultiParam(searchParams, key) {
@@ -25,8 +30,30 @@ export default function CampgroundsPage() {
     readMultiParam(searchParams, 'amenity')
   )
   const [selectedTags, setSelectedTags] = useState(() => readMultiParam(searchParams, 'tag'))
+  const [imported, setImported] = useState<DisplayCampground[]>([])
+  const [loadingImported, setLoadingImported] = useState(true)
 
-  const regions = useMemo(() => getAllRegions(), [])
+  useEffect(() => {
+    let cancelled = false
+    loadImportedCampgrounds().then((list) => {
+      if (cancelled) return
+      setImported(list)
+      setLoadingImported(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const allCampgrounds = useMemo(
+    () => (imported.length ? mergeCampgrounds(imported) : curatedCampgrounds()),
+    [imported],
+  )
+
+  const regions = useMemo(
+    () => [...new Set(allCampgrounds.map((c) => c.region))].sort(),
+    [allCampgrounds],
+  )
   const amenityOptions = useMemo(() => getAllAmenities(), [])
   const tags = useMemo(() => getAllTags(), [])
 
@@ -45,13 +72,13 @@ export default function CampgroundsPage() {
 
   const results = useMemo(
     () =>
-      searchCampgrounds({
+      filterCampgrounds(allCampgrounds, {
         query,
         regions: selectedRegions,
         amenities: selectedAmenities,
         tags: selectedTags,
       }),
-    [query, selectedRegions, selectedAmenities, selectedTags]
+    [allCampgrounds, query, selectedRegions, selectedAmenities, selectedTags]
   )
 
   return (
@@ -59,7 +86,7 @@ export default function CampgroundsPage() {
       <div>
         <h2 className="text-2xl font-semibold text-gray-900">Browse Campgrounds</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Real Northern California campgrounds from official park sources.
+          Curated Northern California picks plus every California Recreation.gov campground.
         </p>
       </div>
 
@@ -81,6 +108,7 @@ export default function CampgroundsPage() {
 
       <p className="text-sm text-gray-500">
         Showing {results.length} campground{results.length !== 1 ? 's' : ''}
+        {loadingImported ? ' · loading more…' : ''}
       </p>
 
       <CampgroundList campgrounds={results} />

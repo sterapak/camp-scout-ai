@@ -60,36 +60,40 @@ export function getAllTags() {
  * }} filters
  * @returns {import('./campgroundSchema.js').Campground[]}
  */
-export function searchCampgrounds({ query = '', regions = [], amenities = [], tags = [] } = {}) {
+export function searchCampgrounds(filters = {}) {
+  return filterCampgrounds(getAllCampgrounds(), filters)
+}
+
+/**
+ * Same filtering as searchCampgrounds, but over an explicit list — used to
+ * filter the merged (curated + Recreation.gov-imported) set. Tolerates
+ * imported campgrounds that lack amenities/tags.
+ * @param {Array<import('./campgroundSchema.js').Campground>} list
+ * @param {{ query?: string, regions?: string[], amenities?: string[], tags?: string[] }} filters
+ */
+export function filterCampgrounds(list, { query = '', regions = [], amenities = [], tags = [] } = {}) {
   const normalizedQuery = query.trim().toLowerCase()
   const selectedRegions = regions.filter(Boolean)
   const selectedAmenities = amenities.filter(Boolean)
   const selectedTags = tags.filter(Boolean)
 
-  return getAllCampgrounds().filter((campground) => {
+  return list.filter((campground) => {
+    const cgAmenities = campground.amenities ?? []
+    const cgTags = campground.tags ?? []
     if (selectedRegions.length > 0 && !selectedRegions.includes(campground.region)) return false
     if (
       selectedAmenities.length > 0 &&
-      !selectedAmenities.every((amenity) => campground.amenities.includes(amenity))
+      !selectedAmenities.every((amenity) => cgAmenities.includes(amenity))
     ) {
       return false
     }
-    if (
-      selectedTags.length > 0 &&
-      !selectedTags.some((tag) => campground.tags.includes(tag))
-    ) {
+    if (selectedTags.length > 0 && !selectedTags.some((tag) => cgTags.includes(tag))) {
       return false
     }
 
     if (!normalizedQuery) return true
 
-    const haystack = [
-      campground.name,
-      campground.region,
-      campground.notes,
-      ...campground.amenities,
-      ...campground.tags,
-    ]
+    const haystack = [campground.name, campground.region, campground.notes, ...cgAmenities, ...cgTags]
       .join(' ')
       .toLowerCase()
 
