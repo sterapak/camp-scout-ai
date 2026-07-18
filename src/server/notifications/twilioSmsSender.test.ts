@@ -40,4 +40,23 @@ describe('sendSms', () => {
     const res = await sendSms('', 'hi', deps)
     expect(res.ok).toBe(false)
   })
+
+  it('sends via the Messaging Service (A2P) when a SID is set, not a raw From', async () => {
+    let sentBody = ''
+    const fetchImpl = (async (_url: string, init: RequestInit) => {
+      sentBody = String(init.body)
+      return { ok: true, status: 201, json: async () => ({ sid: 'SM2', status: 'accepted' }) }
+    }) as unknown as typeof fetch
+
+    const res = await sendSms('+17605095350', 'hi', {
+      accountSid: 'ACtest',
+      authToken: 'tok',
+      messagingServiceSid: 'MGabc123',
+      fetchImpl,
+    })
+    expect(res.ok).toBe(true)
+    const decoded = decodeURIComponent(sentBody)
+    expect(decoded).toContain('MessagingServiceSid=MGabc123')
+    expect(decoded).not.toContain('From=')
+  })
 })

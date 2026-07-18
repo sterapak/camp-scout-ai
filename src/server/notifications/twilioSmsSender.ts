@@ -19,13 +19,16 @@ export interface SendSmsDeps {
   accountSid?: string
   authToken?: string
   fromNumber?: string
+  /** A2P: send via a Messaging Service (carries the approved campaign). Preferred over fromNumber. */
+  messagingServiceSid?: string
 }
 
 export function twilioConfigured(deps: SendSmsDeps = {}): boolean {
   const sid = deps.accountSid ?? process.env.TWILIO_ACCOUNT_SID
   const token = deps.authToken ?? process.env.TWILIO_AUTH_TOKEN
   const from = deps.fromNumber ?? process.env.TWILIO_FROM_NUMBER
-  return Boolean(sid && token && from)
+  const service = deps.messagingServiceSid ?? process.env.TWILIO_MESSAGING_SERVICE_SID
+  return Boolean(sid && token && (from || service))
 }
 
 /**
@@ -107,15 +110,19 @@ export async function sendSms(
   const accountSid = deps.accountSid ?? process.env.TWILIO_ACCOUNT_SID
   const authToken = deps.authToken ?? process.env.TWILIO_AUTH_TOKEN
   const fromNumber = deps.fromNumber ?? process.env.TWILIO_FROM_NUMBER
+  const messagingServiceSid = deps.messagingServiceSid ?? process.env.TWILIO_MESSAGING_SERVICE_SID
 
-  if (!accountSid || !authToken || !fromNumber) {
-    return { ok: false, error: 'Twilio not configured (missing SID/token/from)' }
+  if (!accountSid || !authToken || (!fromNumber && !messagingServiceSid)) {
+    return { ok: false, error: 'Twilio not configured (need SID/token + from or messaging service)' }
   }
   const toNumber = toE164(to)
   if (!toNumber) return { ok: false, error: 'missing recipient phone' }
 
   const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
-  const form = new URLSearchParams({ To: toNumber, From: fromNumber, Body: body })
+  // Prefer the Messaging Service (A2P campaign path); fall back to the raw From.
+  const form = new URLSearchParams({ To: toNumber, Body: body })
+  if (messagingServiceSid) form.set('MessagingServiceSid', messagingServiceSid)
+  else form.set('From', fromNumber as string)
   const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64')
 
   try {
