@@ -20,6 +20,9 @@ export interface DisplayCampground {
   notes: string
   tags: string[]
   lastVerifiedAt: string
+  /** Coordinates (present on RIDB-imported campgrounds; used for distance filter). */
+  latitude?: number | null
+  longitude?: number | null
   /** True for RIDB-imported campgrounds (lighter metadata). */
   imported?: boolean
 }
@@ -37,6 +40,8 @@ export function mapRecgovCampground(c: RecgovCampground): DisplayCampground {
     notes: c.description || '',
     tags: [],
     lastVerifiedAt: '',
+    latitude: c.latitude,
+    longitude: c.longitude,
     imported: true,
   }
 }

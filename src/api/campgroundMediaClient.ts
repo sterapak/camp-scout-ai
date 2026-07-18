@@ -32,6 +32,26 @@ export interface RecgovCampground {
   description: string
 }
 
+export interface ZipLocation {
+  lat: number
+  lng: number
+  place: string
+}
+
+/** Geocode a US ZIP to coordinates (server-proxied to zippopotam.us). */
+export async function geocodeZip(zip: string): Promise<ZipLocation | null> {
+  try {
+    const res = await fetch(`/api/geocode/zip?zip=${encodeURIComponent(zip)}`, {
+      credentials: 'same-origin',
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as { location?: ZipLocation | null }
+    return data.location ?? null
+  } catch {
+    return null
+  }
+}
+
 /** All Recreation.gov campgrounds for a state (default CA), imported from RIDB. */
 export async function fetchRecgovCampgrounds(state = 'CA'): Promise<RecgovCampground[]> {
   try {

@@ -11,9 +11,11 @@ import { parseCookies, SESSION_COOKIE } from '../auth/cookies.js'
 import { verifySession } from '../auth/jwt.js'
 import { fetchFacilityPhoto } from './ridbMedia.js'
 import { fetchStateCampgrounds } from './ridbFacilities.js'
+import { geocodeZip } from './geocodeZip.js'
 
 const PHOTO_RE = /^\/api\/campgrounds\/(\d+)\/photo$/
 const RECGOV_LIST_PATH = '/api/campgrounds/recgov'
+const GEOCODE_PATH = '/api/geocode/zip'
 const STATE_RE = /^[A-Za-z]{2}$/
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
@@ -28,7 +30,8 @@ export async function handleCampgroundMediaRoutes(
   const pathname = req.url?.split('?')[0] ?? ''
   const photoMatch = PHOTO_RE.exec(pathname)
   const isList = pathname === RECGOV_LIST_PATH
-  if (!photoMatch && !isList) return false
+  const isGeocode = pathname === GEOCODE_PATH
+  if (!photoMatch && !isList && !isGeocode) return false
 
   if ((req.method ?? 'GET') !== 'GET') {
     res.setHeader('Allow', 'GET')
@@ -39,6 +42,15 @@ export async function handleCampgroundMediaRoutes(
   // Behind the login wall (keeps our RIDB key from being farmed anonymously).
   if (!verifySession(parseCookies(req)[SESSION_COOKIE])) {
     sendJson(res, 401, { error: 'Sign in required.' })
+    return true
+  }
+
+  // Geocode a US ZIP -> coordinates (for the distance filter).
+  if (isGeocode) {
+    const zip = new URL(req.url ?? '', 'http://localhost').searchParams.get('zip') ?? ''
+    const loc = await geocodeZip(zip)
+    res.setHeader('Cache-Control', 'private, max-age=86400')
+    sendJson(res, 200, { location: loc })
     return true
   }
 
