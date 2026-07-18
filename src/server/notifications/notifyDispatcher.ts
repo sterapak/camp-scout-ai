@@ -13,6 +13,7 @@ import { alertsSent, userSettings, type WatchRow } from '../db/schema.js'
 import { buildCampgroundLink, buildSiteDeepLink } from '../availability/recGovAdapter.js'
 import type { WatchMatch } from '../availability/diffEngine.js'
 import { sendSms, twilioConfigured, type SendSmsDeps } from './twilioSmsSender.js'
+import { emailConfigured, sendEmail, type SendEmailDeps } from './emailSender.js'
 
 /** Global kill-switch: set WATCH_SMS_ENABLED=false to stop all SMS sends. */
 function smsSendingEnabled(): boolean {
@@ -27,6 +28,7 @@ export interface DispatchResult {
 
 export interface DispatchDeps {
   smsDeps?: SendSmsDeps
+  emailDeps?: SendEmailDeps
   /** Override deep-link builder (Phase 2 RC uses a different one). */
   deepLinkFor?: (platform: string, siteId: string) => string
 }
@@ -100,20 +102,31 @@ export async function dispatchMatches(
     owner.smsEnabled &&
     Boolean(owner.phone) &&
     twilioConfigured(deps.smsDeps)
+  const canEmail =
+    owner.emailEnabled && Boolean(owner.email) && emailConfigured(deps.emailDeps)
 
-  // Exactly ONE SMS for the whole batch — never one per site-night.
+  // Exactly ONE message per channel for the whole batch — never one per site-night.
   const { body } = formatBatchMessage(watch, fresh.map((f) => f.match), deps)
-  let deliveryStatus = 'skipped'
+  const firedChannels: string[] = []
+
   if (canSms) {
     const res = await sendSms(owner.phone as string, body, deps.smsDeps)
-    deliveryStatus = res.ok ? 'sent' : 'failed'
+    firedChannels.push('sms')
     if (res.ok) result.sent += 1
     else result.failed += 1
-  } else {
-    result.skipped += fresh.length
   }
+  if (canEmail) {
+    const subject = `🏕 Cancellation alert: ${watch.campgroundName}`
+    const res = await sendEmail(owner.email as string, subject, body, deps.emailDeps)
+    firedChannels.push('email')
+    if (res.ok) result.sent += 1
+    else result.failed += 1
+  }
+  if (firedChannels.length === 0) result.skipped += fresh.length
 
-  // Record every fresh slot for dedup + history; the single SMS covered them all.
+  // Record every fresh slot for dedup + history; the message(s) covered them all.
+  const channelLabel = firedChannels.length ? firedChannels.join('+') : 'none'
+  const deliveryStatus = firedChannels.length ? (result.sent > 0 ? 'sent' : 'failed') : 'skipped'
   for (const { match, dedupKey } of fresh) {
     db.insert(alertsSent)
       .values({
@@ -124,7 +137,7 @@ export async function dispatchMatches(
         siteId: match.siteId,
         siteName: match.siteName,
         date: match.date,
-        channel: canSms ? 'sms' : 'none',
+        channel: channelLabel,
         deepLink: deepLinkForMatch(watch.platform, match.siteId, deps),
         messageBody: body,
         deliveryStatus,

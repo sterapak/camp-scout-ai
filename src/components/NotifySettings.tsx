@@ -101,9 +101,9 @@ export default function NotifySettings() {
           <input type="checkbox" checked={smsEnabled} onChange={(e) => setSmsEnabled(e.target.checked)} />
           Send SMS alerts
         </label>
-        <label className="flex items-center gap-2 text-sm text-gray-500">
+        <label className="flex items-center gap-2 text-sm text-gray-700">
           <input type="checkbox" checked={emailEnabled} onChange={(e) => setEmailEnabled(e.target.checked)} />
-          Send email alerts <span className="text-xs">(coming soon)</span>
+          Send email alerts <span className="text-xs text-green-700">(reliable — no carrier setup)</span>
         </label>
       </div>
 

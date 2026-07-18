@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
+import { eq } from 'drizzle-orm'
+
 import { getDb, __resetDbForTests } from '../db/index.js'
 import { alertsSent, users, userSettings, type WatchRow } from '../db/schema.js'
 import { dispatchMatches } from './notifyDispatcher.js'
@@ -86,6 +88,28 @@ describe('dispatchMatches — no SMS fan-out', () => {
     expect(second.calls).toHaveLength(0)
     expect(result.sent).toBe(0)
     expect(result.skipped).toBe(50)
+  })
+
+  it('sends ONE email (not one per site) when email alerts are enabled', async () => {
+    const db = getDb()
+    db.update(userSettings)
+      .set({ emailEnabled: true, email: 'me@example.com', smsEnabled: false })
+      .where(eq(userSettings.userId, userId))
+      .run()
+
+    const calls: unknown[] = []
+    const emailDeps = {
+      apiKey: 're_x',
+      fetchImpl: (async (_u: string, i: RequestInit) => {
+        calls.push(JSON.parse(String(i.body)))
+        return { ok: true, status: 200, json: async () => ({ id: 'em1' }) }
+      }) as unknown as typeof fetch,
+    }
+
+    const result = await dispatchMatches(db, watchRow(userId), matches(30), { emailDeps })
+    expect(calls).toHaveLength(1)
+    expect(result.sent).toBe(1)
+    expect(db.select().from(alertsSent).all()).toHaveLength(30)
   })
 
   it('sends nothing when the kill-switch is off', async () => {
