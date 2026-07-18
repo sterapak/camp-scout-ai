@@ -106,9 +106,9 @@ const SUPPORTED_PLATFORMS = new Set(['recgov', 'reservecalifornia'])
 
 /** Human-readable poll status from the failing HTTP status (0 = network). */
 function pollErrorMessage(status: number | undefined): string {
-  if (status === 404) return 'unavailable: campground not found on Recreation.gov (404)'
-  if (status && status >= 500) return `error: Recreation.gov ${status}`
-  if (status && status >= 400) return `error: Recreation.gov ${status}`
+  if (status === 404) return 'unavailable: campground not found (404)'
+  if (status === 403) return 'error: blocked by provider (403)'
+  if (status && status >= 400) return `error: provider ${status}`
   return 'error: network unreachable'
 }
 

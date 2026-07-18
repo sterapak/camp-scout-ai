@@ -21,6 +21,20 @@ const RC_UA =
 export const RC_BASE =
   'https://california-rdr.prod.cali.rd12.recreation-management.tylerapp.com/rdr'
 
+// Browser-like headers so a datacenter request looks like the real site's calls
+// (Tyler's WAF 403s bare requests from server IPs).
+const RC_HEADERS: Record<string, string> = {
+  Origin: 'https://www.reservecalifornia.com',
+  Referer: 'https://www.reservecalifornia.com/',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'sec-ch-ua': '"Chromium";v="126", "Not.A/Brand";v="24"',
+  'sec-ch-ua-mobile': '?0',
+  'sec-ch-ua-platform': '"macOS"',
+  'Sec-Fetch-Dest': 'empty',
+  'Sec-Fetch-Mode': 'cors',
+  'Sec-Fetch-Site': 'cross-site',
+}
+
 interface RcSlice {
   Date?: string
   IsFree?: boolean
@@ -86,6 +100,7 @@ export async function fetchFacilityGrid(
   const res = await politeFetchJson<RcGridResponse>(`${RC_BASE}/search/grid`, {
     method: 'POST',
     userAgent: RC_UA,
+    headers: RC_HEADERS,
     body,
     ...options,
   })
