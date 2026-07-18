@@ -18,9 +18,23 @@ import { eq } from 'drizzle-orm'
 
 import type { Db } from '../db/index.js'
 import { availabilitySnapshots, watches, type WatchRow } from '../db/schema.js'
-import { fetchMonthAvailability } from './recGovAdapter.js'
+import { fetchMonthAvailability as fetchRecGovMonth } from './recGovAdapter.js'
+import { fetchMonthAvailability as fetchRcMonth } from './reserveCaliforniaAdapter.js'
 import { diffAvailability } from './diffEngine.js'
-import type { NormalizedAvailability, SiteFilters } from './types.js'
+import type { FetchAvailabilityResult, NormalizedAvailability, SiteFilters } from './types.js'
+
+/** Availability fetcher per platform (both share the same result shape). */
+function fetchMonthFor(
+  platform: string,
+  facilityId: string,
+  monthKey: string,
+  fetchImpl?: typeof fetch,
+): Promise<FetchAvailabilityResult> {
+  const opts = { fetchImpl }
+  return platform === 'reservecalifornia'
+    ? fetchRcMonth(facilityId, monthKey, opts)
+    : fetchRecGovMonth(facilityId, monthKey, opts)
+}
 import { dispatchMatches, type DispatchDeps } from '../notifications/notifyDispatcher.js'
 
 export interface SchedulerOptions {
@@ -85,7 +99,10 @@ function isDue(watch: WatchRow, now: Date, defaultInterval: number): boolean {
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-const snapshotKey = (facilityId: string, monthKey: string) => `recgov:${facilityId}:${monthKey}`
+const snapshotKey = (platform: string, facilityId: string, monthKey: string) =>
+  `${platform}:${facilityId}:${monthKey}`
+
+const SUPPORTED_PLATFORMS = new Set(['recgov', 'reservecalifornia'])
 
 /** Human-readable poll status from the failing HTTP status (0 = network). */
 function pollErrorMessage(status: number | undefined): string {
@@ -127,16 +144,17 @@ export async function runOneTick(
   )
   if (due.length === 0) return summary
 
-  // Only Recreation.gov in Phase 1.
-  const dueRecgov = due.filter((w) => w.platform === 'recgov')
+  // Recreation.gov + ReserveCalifornia (per-platform adapters).
+  const dueWatchable = due.filter((w) => SUPPORTED_PLATFORMS.has(w.platform))
 
-  // Collect the unique (facility, month) fetches needed across all due watches.
-  const needed = new Map<string, { facilityId: string; monthKey: string }>()
-  for (const w of dueRecgov) {
+  // Collect the unique (platform, facility, month) fetches across all due watches.
+  const needed = new Map<string, { platform: string; facilityId: string; monthKey: string }>()
+  for (const w of dueWatchable) {
     for (const monthKey of monthKeysBetween(w.startDate, w.endDate)) {
       // Skip months already fully in the past.
       if (monthKey < today.slice(0, 7)) continue
-      needed.set(snapshotKey(w.facilityId, monthKey), {
+      needed.set(snapshotKey(w.platform, w.facilityId, monthKey), {
+        platform: w.platform,
         facilityId: w.facilityId,
         monthKey,
       })
@@ -153,11 +171,11 @@ export async function runOneTick(
     }
   >()
   let first = true
-  for (const { facilityId, monthKey } of needed.values()) {
+  for (const { platform, facilityId, monthKey } of needed.values()) {
     if (!first) await sleep(spacing + Math.floor(Math.random() * spacing * 0.4))
     first = false
 
-    const key = snapshotKey(facilityId, monthKey)
+    const key = snapshotKey(platform, facilityId, monthKey)
     const prevRow = db
       .select()
       .from(availabilitySnapshots)
@@ -168,12 +186,10 @@ export async function runOneTick(
       : null
 
     summary.fetches += 1
-    const res = await fetchMonthAvailability(facilityId, monthKey, {
-      fetchImpl: options.fetchImpl,
-    })
+    const res = await fetchMonthFor(platform, facilityId, monthKey, options.fetchImpl)
     if (!res.ok || !res.availability) {
       summary.fetchErrors += 1
-      log('watch_fetch_error', { facilityId, monthKey, status: res.status, error: res.error })
+      log('watch_fetch_error', { platform, facilityId, monthKey, status: res.status, error: res.error })
       results.set(key, { prev, fresh: null, status: res.status })
       // Simple backoff: extra pause after an error so we don't hammer.
       await sleep(spacing)
@@ -183,7 +199,7 @@ export async function runOneTick(
     const payload = JSON.stringify(res.availability)
     const payloadHash = hashPayload(payload)
     db.insert(availabilitySnapshots)
-      .values({ snapshotKey: key, platform: 'recgov', facilityId, monthKey, payload, payloadHash })
+      .values({ snapshotKey: key, platform, facilityId, monthKey, payload, payloadHash })
       .onConflictDoUpdate({
         target: availabilitySnapshots.snapshotKey,
         set: {
@@ -197,7 +213,7 @@ export async function runOneTick(
   }
 
   // Diff + dispatch per watch.
-  for (const w of dueRecgov) {
+  for (const w of dueWatchable) {
     summary.watchesPolled += 1
     let hadError = false
     let errorStatus: number | undefined
@@ -205,7 +221,7 @@ export async function runOneTick(
 
     for (const monthKey of monthKeysBetween(w.startDate, w.endDate)) {
       if (monthKey < today.slice(0, 7)) continue
-      const r = results.get(snapshotKey(w.facilityId, monthKey))
+      const r = results.get(snapshotKey(w.platform, w.facilityId, monthKey))
       if (!r || r.fresh === null) {
         hadError = true
         if (r?.status) errorStatus = r.status

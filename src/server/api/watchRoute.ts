@@ -19,6 +19,7 @@ import { and, desc, eq } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
 import { alertsSent, userSettings, watches } from '../db/schema.js'
 import { checkCampgroundWatchable, parseRecGovCampgroundId } from '../availability/recGovAdapter.js'
+import { checkFacilityWatchable } from '../availability/reserveCaliforniaAdapter.js'
 import { requireUser } from '../auth/authRoutes.js'
 
 export interface WatchRouteDeps {
@@ -107,8 +108,10 @@ export async function handleWatchRoutes(
         const startDate = (body.startDate as string) || ''
         const endDate = (body.endDate as string) || ''
 
-        if (platform !== 'recgov') {
-          sendJson(res, 400, { error: 'Only platform "recgov" is supported in this phase.' })
+        if (platform !== 'recgov' && platform !== 'reservecalifornia') {
+          sendJson(res, 400, {
+            error: 'Only "recgov" and "reservecalifornia" platforms are supported.',
+          })
           return true
         }
         if (!facilityId || !campgroundName || !DATE_RE.test(startDate) || !DATE_RE.test(endDate)) {
@@ -123,15 +126,17 @@ export async function handleWatchRoutes(
           return true
         }
 
-        // Validate the campground actually has a Recreation.gov availability feed
-        // before saving — otherwise the watch would 404 on every poll forever.
-        const check = await checkCampgroundWatchable(facilityId, startDate.slice(0, 7), {
-          fetchImpl: deps.fetchImpl,
-        })
+        // Validate the campground actually has an availability feed before saving
+        // — otherwise the watch would error on every poll forever.
+        const month = startDate.slice(0, 7)
+        const check =
+          platform === 'reservecalifornia'
+            ? await checkFacilityWatchable(facilityId, month, { fetchImpl: deps.fetchImpl })
+            : await checkCampgroundWatchable(facilityId, month, { fetchImpl: deps.fetchImpl })
         if (check.reason === 'not_found') {
           sendJson(res, 400, {
             error:
-              "This campground doesn't publish a Recreation.gov availability feed we can watch (got 404). It may be first-come/permit-only, or the link or ID is off.",
+              "This campground doesn't have an availability feed we can watch. Check the ID/link — it may be first-come/permit-only.",
           })
           return true
         }

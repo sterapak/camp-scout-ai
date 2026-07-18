@@ -11,6 +11,7 @@ import { eq } from 'drizzle-orm'
 import type { Db } from '../db/index.js'
 import { alertsSent, userSettings, type WatchRow } from '../db/schema.js'
 import { buildCampgroundLink, buildSiteDeepLink } from '../availability/recGovAdapter.js'
+import { buildReserveCaliforniaLink } from '../availability/reserveCaliforniaAdapter.js'
 import type { WatchMatch } from '../availability/diffEngine.js'
 import { sendSms, twilioConfigured, type SendSmsDeps } from './twilioSmsSender.js'
 import { emailConfigured, sendEmail, type SendEmailDeps } from './emailSender.js'
@@ -37,7 +38,7 @@ export interface DispatchDeps {
 
 function deepLinkForMatch(platform: string, siteId: string, deps: DispatchDeps): string {
   if (deps.deepLinkFor) return deps.deepLinkFor(platform, siteId)
-  // Phase 1: recgov only.
+  if (platform === 'reservecalifornia') return buildReserveCaliforniaLink()
   return buildSiteDeepLink(siteId)
 }
 
@@ -65,7 +66,9 @@ export function formatBatchMessage(
   }
   const link = deps.deepLinkFor
     ? deepLinkForMatch(watch.platform, first.siteId, deps)
-    : buildCampgroundLink(watch.facilityId)
+    : watch.platform === 'reservecalifornia'
+      ? buildReserveCaliforniaLink()
+      : buildCampgroundLink(watch.facilityId)
   const loop = first.loop ? ` (${first.loop})` : ''
   const body = `🏕 ${matches.length} openings at ${watch.campgroundName} for your dates — e.g. Site ${first.siteName}${loop} on ${first.date}. Book: ${link}`
   return { body, deepLink: link }
