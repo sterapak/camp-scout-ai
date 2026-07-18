@@ -14,6 +14,7 @@ import { getDb } from '../db/index.js'
 import { userSettings } from '../db/schema.js'
 import { requireUser } from '../auth/authRoutes.js'
 import { listRecentMessages, sendSms, toE164, twilioConfigured } from './twilioSmsSender.js'
+import { emailConfigured, sendEmail } from './emailSender.js'
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -27,10 +28,12 @@ export async function handleSmsStatusRoute(
   const path = req.url?.split('?')[0] ?? ''
   const isStatus = path === '/api/sms/status'
   const isTest = path === '/api/sms/test'
-  if (!isStatus && !isTest) return false
+  const isEmailTest = path === '/api/email/test'
+  if (!isStatus && !isTest && !isEmailTest) return false
 
   const method = req.method ?? 'GET'
-  if ((isStatus && method !== 'GET') || (isTest && method !== 'POST')) {
+  const wantsPost = isTest || isEmailTest
+  if ((isStatus && method !== 'GET') || (wantsPost && method !== 'POST')) {
     res.setHeader('Allow', isStatus ? 'GET' : 'POST')
     sendJson(res, 405, { error: 'Method not allowed.' })
     return true
@@ -43,6 +46,27 @@ export async function handleSmsStatusRoute(
   }
 
   const settings = getDb().select().from(userSettings).where(eq(userSettings.userId, user.uid)).get()
+
+  // POST /api/email/test — send a single test email to the user's own address.
+  if (isEmailTest) {
+    const email = settings?.email?.trim() ?? ''
+    if (!emailConfigured()) {
+      sendJson(res, 200, { ok: false, error: 'Email not configured (set RESEND_API_KEY).' })
+      return true
+    }
+    if (!email) {
+      sendJson(res, 200, { ok: false, error: 'Set your email in Settings first.' })
+      return true
+    }
+    const result = await sendEmail(
+      email,
+      '🏕 Camp Scout AI test',
+      'Your Camp Scout cancellation alerts are working. This is a test email.',
+    )
+    sendJson(res, 200, { ok: result.ok, to: email, id: result.id ?? null, error: result.error ?? null })
+    return true
+  }
+
   const phone = toE164(settings?.phone ?? '')
   const configured = twilioConfigured()
 
