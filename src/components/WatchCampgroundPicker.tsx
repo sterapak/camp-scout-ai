@@ -19,7 +19,7 @@ interface Option {
   reservationUrl: string
 }
 
-const MAX_RESULTS = 30
+const MAX_RESULTS = 60
 
 interface CuratedCampground {
   name: string
@@ -69,10 +69,9 @@ export default function WatchCampgroundPicker({ onCreated }: { onCreated: (watch
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return null
-    const hits = options.filter(
-      (o) => o.name.toLowerCase().includes(q) || o.region.toLowerCase().includes(q),
-    )
+    const hits = q
+      ? options.filter((o) => o.name.toLowerCase().includes(q) || o.region.toLowerCase().includes(q))
+      : options
     return { total: hits.length, shown: hits.slice(0, MAX_RESULTS) }
   }, [query, options])
 
@@ -145,8 +144,8 @@ export default function WatchCampgroundPicker({ onCreated }: { onCreated: (watch
         autoComplete="off"
       />
 
-      {matches && (
-        <div className="max-h-72 overflow-y-auto rounded-md border border-gray-200">
+      {options.length > 0 && (
+        <div className="max-h-[32rem] overflow-y-auto rounded-md border border-gray-200">
           {matches.shown.length === 0 ? (
             <p className="px-3 py-3 text-sm text-gray-500">
               No matches.{' '}
