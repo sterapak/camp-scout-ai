@@ -20,10 +20,27 @@ import {
   SESSION_COOKIE,
 } from './cookies.js'
 
+/**
+ * Access control: if ALLOWED_EMAILS is set (comma-separated), only those emails
+ * may sign in / stay signed in. Unset => open sign-up (public). Keeps the app
+ * private to a fixed list — important while Pushover routes to one device.
+ */
+export function isEmailAllowed(email: string | null | undefined): boolean {
+  const raw = process.env.ALLOWED_EMAILS?.trim()
+  if (!raw) return true // no allowlist configured => open
+  const allowed = raw
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+  return allowed.includes((email ?? '').trim().toLowerCase())
+}
+
 /** The authenticated user for this request, or null. Identity is in the JWT. */
 export function requireUser(req: IncomingMessage): SessionUser | null {
   const cookies = parseCookies(req)
-  return verifySession(cookies[SESSION_COOKIE])
+  const session = verifySession(cookies[SESSION_COOKIE])
+  if (!session || !isEmailAllowed(session.email)) return null
+  return session
 }
 
 function redirect(res: ServerResponse, location: string, setCookies: string[] = []): void {
@@ -65,6 +82,16 @@ export async function handleAuthRoutes(
     }
     try {
       const g = await exchangeCodeForUser(code)
+      if (!isEmailAllowed(g.email)) {
+        res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' })
+        res.end(
+          '<!doctype html><meta charset="utf-8"><title>Access restricted</title>' +
+            '<body style="font-family:system-ui;max-width:32rem;margin:4rem auto;padding:0 1rem;text-align:center">' +
+            '<h1>🏕 Camp Scout AI</h1><p>This instance is private — your Google account isn\'t on the access list.</p>' +
+            '<p><a href="/">Back</a></p></body>',
+        )
+        return true
+      }
       const db = getDb()
       db.insert(users)
         .values({ id: randomUUID(), googleSub: g.sub, email: g.email, name: g.name, picture: g.picture })
