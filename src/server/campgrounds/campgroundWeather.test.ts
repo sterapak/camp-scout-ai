@@ -54,13 +54,14 @@ describe('getConditions', () => {
     expect(spy).not.toHaveBeenCalled()
   })
 
-  it('summarizes typical climate for each month in a watch window', async () => {
+  it('summarizes typical climate for each month in a watch window (one call, bucketed)', async () => {
     const payload = {
       elevation: 1800,
       daily: {
-        temperature_2m_max: [40, 42],
-        temperature_2m_min: [28, 30],
-        snowfall_sum: [1, 2],
+        time: ['2025-11-01', '2025-11-02', '2025-12-01', '2025-12-02'],
+        temperature_2m_max: [40, 42, 38, 36],
+        temperature_2m_min: [28, 30, 26, 24],
+        snowfall_sum: [1, 0, 2, 3],
       },
     }
     const { elevationFt, months } = await getMonthlyClimate(
@@ -72,8 +73,8 @@ describe('getConditions', () => {
       meteoFetch(payload),
     )
     expect(months.map((m) => m.label)).toEqual(['November', 'December'])
-    expect(months[0].advisory).toBe('freezing')
-    expect(months[1].snowDays).toBe(2)
+    expect(months[0].advisory).toBe('freezing') // Nov avg low 29
+    expect(months[1].snowDays).toBe(2) // Dec: 2 days with snow
     expect(elevationFt).toBe(Math.round(1800 * 3.28084))
   })
 })

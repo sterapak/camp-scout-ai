@@ -28,7 +28,7 @@ const cache = new Map<string, { conditions: Conditions | null; expiresAt: number
 /** Test-only: clear the conditions caches. */
 export function __resetWeatherCacheForTests(): void {
   cache.clear()
-  monthCache.clear()
+  yearCache.clear()
 }
 
 export interface MonthClimate {
@@ -40,11 +40,11 @@ export interface MonthClimate {
   advisory: Conditions['advisory']
 }
 
-interface MonthCacheEntry {
-  data: { highF: number; lowF: number; snowDays: number; elevationFt: number } | null
-  expiresAt: number
+interface YearData {
+  elevationFt: number
+  byMonth: Map<number, { highF: number; lowF: number; snowDays: number }>
 }
-const monthCache = new Map<string, MonthCacheEntry>()
+const yearCache = new Map<string, { data: YearData | null; expiresAt: number }>()
 
 /** Every 'YYYY-MM' from start..end inclusive (capped at 24). */
 export function monthsBetween(start: string, end: string): string[] {
@@ -174,38 +174,58 @@ export async function getConditions(
   return conditions
 }
 
-/** Historical typical for one calendar month (avg high/low, snow days). */
-async function typicalForMonth(
+/**
+ * One archive call for the whole historical year, bucketed by month. Avoids a
+ * burst of per-month calls (which hit rate limits and dropped months), and
+ * caches so any date range for this location reuses a single fetch.
+ */
+async function fetchHistYear(
   lat: number,
   lng: number,
   histYear: number,
-  month1: number,
   fetchImpl: typeof fetch,
-): Promise<MonthCacheEntry['data']> {
-  const key = `${lat.toFixed(2)},${lng.toFixed(2)},${histYear}-${month1}`
-  const cached = monthCache.get(key)
+): Promise<YearData | null> {
+  const key = `${lat.toFixed(2)},${lng.toFixed(2)},${histYear}`
+  const cached = yearCache.get(key)
   if (cached && cached.expiresAt > Date.now()) return cached.data
 
-  let data: MonthCacheEntry['data'] = null
+  let data: YearData | null = null
   try {
-    const url = `${ARCHIVE_BASE}?latitude=${lat}&longitude=${lng}&start_date=${histYear}-${String(month1).padStart(2, '0')}-01&end_date=${monthEnd(histYear, month1)}&daily=temperature_2m_max,temperature_2m_min,snowfall_sum&temperature_unit=fahrenheit`
-    const res = await politeFetchJson<OpenMeteoDaily>(url, { fetchImpl })
+    const url = `${ARCHIVE_BASE}?latitude=${lat}&longitude=${lng}&start_date=${histYear}-01-01&end_date=${histYear}-12-31&daily=temperature_2m_max,temperature_2m_min,snowfall_sum&temperature_unit=fahrenheit`
+    const res = await politeFetchJson<OpenMeteoDaily>(url, { fetchImpl, timeoutMs: 20_000 })
     const d = res.data?.daily
-    const highs = (d?.temperature_2m_max ?? []).filter((x): x is number => x != null)
-    const lows = (d?.temperature_2m_min ?? []).filter((x): x is number => x != null)
-    if (res.ok && highs.length && lows.length) {
-      data = {
-        highF: Math.round(mean(highs)),
-        lowF: Math.round(mean(lows)),
-        snowDays: (d?.snowfall_sum ?? []).filter((x) => (x ?? 0) > 0).length,
-        elevationFt: metersToFeet(res.data?.elevation ?? 0),
+    if (res.ok && d?.time?.length) {
+      const acc = new Map<number, { highs: number[]; lows: number[]; snow: number }>()
+      for (let i = 0; i < d.time.length; i += 1) {
+        const mo = Number(d.time[i].slice(5, 7))
+        const b = acc.get(mo) ?? { highs: [], lows: [], snow: 0 }
+        const hi = d.temperature_2m_max?.[i]
+        const lo = d.temperature_2m_min?.[i]
+        if (hi != null) b.highs.push(hi)
+        if (lo != null) b.lows.push(lo)
+        if ((d.snowfall_sum?.[i] ?? 0) > 0) b.snow += 1
+        acc.set(mo, b)
       }
+      const byMonth = new Map<number, { highF: number; lowF: number; snowDays: number }>()
+      for (const [mo, b] of acc) {
+        if (b.highs.length && b.lows.length) {
+          byMonth.set(mo, {
+            highF: Math.round(mean(b.highs)),
+            lowF: Math.round(mean(b.lows)),
+            snowDays: b.snow,
+          })
+        }
+      }
+      data = { elevationFt: metersToFeet(res.data?.elevation ?? 0), byMonth }
     }
   } catch {
-    monthCache.set(key, { data: null, expiresAt: Date.now() + 5 * 60 * 1000 })
+    yearCache.set(key, { data: null, expiresAt: Date.now() + 5 * 60 * 1000 })
     return null
   }
-  monthCache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS })
+  yearCache.set(key, {
+    data,
+    expiresAt: Date.now() + (data ? CACHE_TTL_MS : 5 * 60 * 1000),
+  })
   return data
 }
 
@@ -225,29 +245,22 @@ export async function getMonthlyClimate(
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return empty
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) return empty
 
-  const histYear = now.getUTCFullYear() - 1
-  // Fetch every month in parallel (was sequential — slow for a wide window).
-  const entries = await Promise.all(
-    monthsBetween(start, end).map(async (ym) => {
-      const month1 = Number(ym.slice(5, 7))
-      const t = await typicalForMonth(lat, lng, histYear, month1, fetchImpl)
-      return t ? { ym, month1, t } : null
-    }),
-  )
+  const yd = await fetchHistYear(lat, lng, now.getUTCFullYear() - 1, fetchImpl)
+  if (!yd) return empty
 
   const months: MonthClimate[] = []
-  let elevationFt = 0
-  for (const e of entries) {
-    if (!e) continue
-    elevationFt = e.t.elevationFt
+  for (const ym of monthsBetween(start, end)) {
+    const month1 = Number(ym.slice(5, 7))
+    const d = yd.byMonth.get(month1)
+    if (!d) continue
     months.push({
-      month: e.ym,
-      label: MONTHS[e.month1 - 1],
-      highF: e.t.highF,
-      lowF: e.t.lowF,
-      snowDays: e.t.snowDays,
-      advisory: advisoryFor(e.t.lowF, e.t.highF),
+      month: ym,
+      label: MONTHS[month1 - 1],
+      highF: d.highF,
+      lowF: d.lowF,
+      snowDays: d.snowDays,
+      advisory: advisoryFor(d.lowF, d.highF),
     })
   }
-  return { elevationFt, months }
+  return { elevationFt: yd.elevationFt, months }
 }
