@@ -71,6 +71,9 @@ export async function fetchFacilityCoords(
   const apiKey = process.env.RIDB_API_KEY
   if (!apiKey) return null
 
+  const valid = (a: number, b: number): boolean =>
+    Number.isFinite(a) && Number.isFinite(b) && a !== 0 && b !== 0
+
   let coords: { lat: number; lng: number } | null = null
   try {
     const res = await fetchImpl(`${RIDB_BASE}/facilities/${facilityId}`, {
@@ -80,8 +83,20 @@ export async function fetchFacilityCoords(
       const f = (await res.json()) as RidbFacility
       const lat = Number(f.FacilityLatitude)
       const lng = Number(f.FacilityLongitude)
-      if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
+      if (valid(lat, lng)) {
         coords = { lat, lng }
+      } else if (f.FacilityName) {
+        // RIDB has no coords for this facility (data gap) — match by name in the
+        // imported state list, which has good coordinates.
+        const target = f.FacilityName.toLowerCase().replace(/\bcampground\b/g, '').trim()
+        const hit = (await fetchStateCampgrounds('CA')).find((c) => {
+          if (c.latitude == null || c.longitude == null) return false
+          const n = c.name.toLowerCase()
+          return n === target || n.startsWith(target) || target.startsWith(n)
+        })
+        if (hit && hit.latitude != null && hit.longitude != null) {
+          coords = { lat: hit.latitude, lng: hit.longitude }
+        }
       }
     }
   } catch {
