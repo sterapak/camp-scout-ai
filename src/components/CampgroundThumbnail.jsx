@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { FiImage } from 'react-icons/fi'
+import { FiImage, FiMapPin } from 'react-icons/fi'
 import { getPrimaryImage } from '../data/campgroundData'
 import { isApiAvailable } from '../api/apiAuth'
 import { parseRecGovCampgroundId } from '../utils/recgov'
@@ -63,15 +63,29 @@ export default function CampgroundThumbnail({ campground }) {
     }
   }, [visible, curated, campground.reservationUrl])
 
+  // State-park campgrounds (ReserveCalifornia / parks.ca.gov) have no Rec.gov
+  // photo source — show a branded banner so it reads as intentional, not broken.
+  const isStatePark = /reservecalifornia|parks\.ca\.gov/i.test(
+    `${campground.reservationUrl || ''} ${campground.sourceUrl || ''}`,
+  )
+
   return (
     <div ref={ref}>
       {!photo || errored ? (
-        <div
-          className="flex aspect-[16/9] w-full items-center justify-center bg-gray-100 dark:bg-gray-800"
-          aria-hidden="true"
-        >
-          <FiImage className="text-gray-300 dark:text-gray-600" size={28} />
-        </div>
+        isStatePark ? (
+          <div className="flex aspect-[16/9] w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-green-700 to-green-900 text-center text-white">
+            <FiMapPin size={22} className="opacity-80" />
+            <span className="text-sm font-semibold">California State Parks</span>
+            <span className="text-xs opacity-70">parks.ca.gov</span>
+          </div>
+        ) : (
+          <div
+            className="flex aspect-[16/9] w-full items-center justify-center bg-gray-100 dark:bg-gray-800"
+            aria-hidden="true"
+          >
+            <FiImage className="text-gray-300 dark:text-gray-600" size={28} />
+          </div>
+        )
       ) : (
         <img
           src={photo.url}
