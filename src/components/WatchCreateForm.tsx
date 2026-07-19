@@ -28,6 +28,35 @@ const DAY_LABELS = [
   { n: 6, l: 'Sat' },
 ]
 
+function advisoryText(c: Conditions): { emoji: string; text: string; cls: string } | null {
+  if (c.advisory === 'freezing')
+    return {
+      emoji: '❄️',
+      text: `Freezing typical${c.snowDays ? ` · snow ~${c.snowDays} days` : ''}`,
+      cls: 'text-blue-700',
+    }
+  if (c.advisory === 'cold') return { emoji: '🧥', text: 'Cold nights', cls: 'text-blue-600' }
+  if (c.advisory === 'hot') return { emoji: '🥵', text: 'Hot', cls: 'text-orange-600' }
+  return null
+}
+
+function ConditionRow({ c, when }: { c: Conditions; when: string }) {
+  const adv = advisoryText(c)
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+      <span className="text-gray-700">
+        <span className="font-medium">{when}</span> {c.highF}° / {c.lowF}°F
+        {adv && (
+          <span className={`ml-2 ${adv.cls}`}>
+            {adv.emoji} {adv.text}
+          </span>
+        )}
+      </span>
+      <span className="text-xs text-gray-400">{c.kind === 'typical' ? 'typical avg' : 'forecast'}</span>
+    </div>
+  )
+}
+
 export default function WatchCreateForm({
   prefillName,
   prefillUrl,
@@ -41,24 +70,30 @@ export default function WatchCreateForm({
   const [weekdays, setWeekdays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [conditions, setConditions] = useState<Conditions | null>(null)
+  const [conditions, setConditions] = useState<{ start: Conditions | null; end: Conditions | null }>({
+    start: null,
+    end: null,
+  })
 
-  // Show the weather/climate for the arrival date so you don't grab a spot in
-  // conditions you're not packed for (e.g. December at a high-elevation site).
+  // Show weather/climate across the watch window so you don't grab a spot in
+  // conditions you're not packed for — a range can span summer to freezing.
   useEffect(() => {
     const facilityId = parseRecGovCampgroundId(url)
-    if (!facilityId || !startDate) {
-      setConditions(null)
+    if (!facilityId) {
+      setConditions({ start: null, end: null })
       return
     }
     let cancelled = false
-    fetchConditions(facilityId, startDate).then((c) => {
-      if (!cancelled) setConditions(c)
+    Promise.all([
+      startDate ? fetchConditions(facilityId, startDate) : Promise.resolve(null),
+      endDate && endDate !== startDate ? fetchConditions(facilityId, endDate) : Promise.resolve(null),
+    ]).then(([start, end]) => {
+      if (!cancelled) setConditions({ start, end })
     })
     return () => {
       cancelled = true
     }
-  }, [url, startDate])
+  }, [url, startDate, endDate])
 
   function toggleDay(day: number) {
     setWeekdays((prev) =>
@@ -165,30 +200,19 @@ export default function WatchCreateForm({
         </div>
       </div>
 
-      {conditions && (
-        <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-medium text-gray-800">{conditions.label}</span>
-            <span className="text-gray-600">
-              {conditions.highF}° / {conditions.lowF}°F · {conditions.elevationFt.toLocaleString()} ft
+      {(conditions.start || conditions.end) && (
+        <div className="space-y-1 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="font-medium text-gray-800">Conditions for your dates</span>
+            <span className="text-xs text-gray-500">
+              {(conditions.start?.elevationFt ?? conditions.end?.elevationFt ?? 0).toLocaleString()} ft
             </span>
           </div>
-          {conditions.advisory === 'freezing' && (
-            <p className="mt-1 text-blue-700">
-              ❄️ Freezing nights typical
-              {conditions.snowDays ? ` · snow ~${conditions.snowDays} days that month` : ''} — pack
-              for winter camping.
-            </p>
-          )}
-          {conditions.advisory === 'cold' && (
-            <p className="mt-1 text-blue-600">🧥 Cold nights — bring warm layers.</p>
-          )}
-          {conditions.advisory === 'hot' && (
-            <p className="mt-1 text-orange-600">🥵 Hot — plan for heat and shade.</p>
-          )}
-          {conditions.kind === 'typical' && (
-            <p className="mt-1 text-xs text-gray-400">
-              Typical for the month (historical average), not a forecast.
+          {conditions.start && <ConditionRow c={conditions.start} when="Arrive" />}
+          {conditions.end && <ConditionRow c={conditions.end} when="Depart" />}
+          {(conditions.start?.kind === 'typical' || conditions.end?.kind === 'typical') && (
+            <p className="text-xs text-gray-400">
+              &ldquo;Typical&rdquo; = historical monthly average, not a forecast.
             </p>
           )}
         </div>

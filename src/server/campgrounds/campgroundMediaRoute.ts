@@ -52,8 +52,11 @@ export async function handleCampgroundMediaRoutes(
   if (isWeather) {
     const params = new URL(req.url ?? '', 'http://localhost').searchParams
     const date = params.get('date') ?? ''
-    let lat = Number(params.get('lat'))
-    let lng = Number(params.get('lng'))
+    const latParam = params.get('lat')
+    const lngParam = params.get('lng')
+    // NB: absent params must be NaN, not Number(null)===0 (that's lat/lng 0,0).
+    let lat = latParam ? Number(latParam) : NaN
+    let lng = lngParam ? Number(lngParam) : NaN
     const facilityId = params.get('facilityId') ?? ''
     if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && /^\d+$/.test(facilityId)) {
       const cg = (await fetchStateCampgrounds('CA')).find((c) => c.id === facilityId)
