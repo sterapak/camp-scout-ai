@@ -48,6 +48,15 @@ export function __resetFacilitiesCacheForTests(): void {
   cache.clear()
 }
 
+// Acronyms to keep uppercase after title-casing RIDB's ALL-CAPS names.
+const KEEP_UPPER = new Set(['RV', 'NP', 'SP', 'SRA', 'OHV', 'ATV', 'USFS', 'BLM', 'NF', 'ADA'])
+
+/** Title-case an ALL-CAPS RIDB name ("ACKERMAN CAMPGROUND" -> "Ackerman Campground"). */
+export function titleCaseName(name: string): string {
+  const titled = name.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase())
+  return titled.replace(/\b[A-Za-z]{2,5}\b/g, (w) => (KEEP_UPPER.has(w.toUpperCase()) ? w.toUpperCase() : w))
+}
+
 /** Coarse California region buckets for browse/filter, derived from coordinates. */
 export function californiaRegion(lat: number | null, lon: number | null): string {
   if (lat == null || lon == null) return 'California'
@@ -81,7 +90,7 @@ function mapFacility(f: RidbFacility): RecgovCampground | null {
   return {
     id: facilityId,
     facilityId,
-    name,
+    name: titleCaseName(name),
     region: californiaRegion(latitude, longitude),
     latitude,
     longitude,

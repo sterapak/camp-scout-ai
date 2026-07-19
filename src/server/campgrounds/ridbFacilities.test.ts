@@ -2,6 +2,7 @@
 import {
   californiaRegion,
   fetchStateCampgrounds,
+  titleCaseName,
   __resetFacilitiesCacheForTests,
 } from './ridbFacilities.js'
 
@@ -67,7 +68,14 @@ describe('fetchStateCampgrounds (RIDB facilities)', () => {
       4,
     )
     const list = await fetchStateCampgrounds('CA', impl)
-    expect(list.map((c) => c.name)).toEqual(['Real CG'])
+    expect(list.map((c) => c.name)).toEqual(['Real Cg'])
+  })
+
+  it('title-cases ALL-CAPS RIDB names, keeping known acronyms', () => {
+    expect(titleCaseName('ACKERMAN CAMPGROUND')).toBe('Ackerman Campground')
+    expect(titleCaseName('SILVER CREEK-TRUCKEE')).toBe('Silver Creek-Truckee')
+    expect(titleCaseName('ASPEN GROUP (INYO)')).toBe('Aspen Group (Inyo)')
+    expect(titleCaseName('UPPER PINES RV AREA')).toBe('Upper Pines RV Area')
   })
 
   it('paginates until the reported total is covered and dedups', async () => {
