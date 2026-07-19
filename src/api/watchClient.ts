@@ -114,6 +114,10 @@ export async function listAlerts(): Promise<Alert[]> {
   return data.alerts ?? []
 }
 
+export async function clearAlerts(): Promise<void> {
+  await request<{ ok: boolean }>('/api/alerts', { method: 'DELETE' })
+}
+
 export async function getContactSettings(): Promise<ContactSettings | null> {
   const data = await request<{ settings: ContactSettings | null }>('/api/settings/contact')
   return data.settings

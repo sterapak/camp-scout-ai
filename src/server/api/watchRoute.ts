@@ -218,14 +218,24 @@ export async function handleWatchRoutes(
 
     // ---- /api/alerts ----
     if (pathname === '/api/alerts') {
-      const rows = db
-        .select()
-        .from(alertsSent)
-        .where(eq(alertsSent.userId, userId))
-        .orderBy(desc(alertsSent.sentAt))
-        .limit(50)
-        .all()
-      sendJson(res, 200, { alerts: rows })
+      if (method === 'DELETE') {
+        db.delete(alertsSent).where(eq(alertsSent.userId, userId)).run()
+        sendJson(res, 200, { ok: true })
+        return true
+      }
+      if (method === 'GET') {
+        const rows = db
+          .select()
+          .from(alertsSent)
+          .where(eq(alertsSent.userId, userId))
+          .orderBy(desc(alertsSent.sentAt))
+          .limit(50)
+          .all()
+        sendJson(res, 200, { alerts: rows })
+        return true
+      }
+      res.setHeader('Allow', 'GET, DELETE')
+      sendJson(res, 405, { error: 'Method not allowed.' })
       return true
     }
 

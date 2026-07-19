@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { isApiAvailable } from '../api/apiAuth.js'
 import {
+  clearAlerts,
   deleteWatch,
   listAlerts,
   listWatches,
@@ -91,6 +92,16 @@ export default function WatchesPage() {
     }
   }
 
+  async function clearAllAlerts() {
+    setActionError(null)
+    try {
+      await clearAlerts()
+      await load()
+    } catch (err) {
+      setActionError(err instanceof WatchApiError ? err.message : 'Could not clear alerts.')
+    }
+  }
+
   if (!apiAvailable) {
     return (
       <div className="max-w-5xl mx-auto space-y-6">
@@ -168,9 +179,19 @@ export default function WatchesPage() {
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-900">Recent alerts</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">Recent alerts</h3>
+          {alerts.length > 0 && (
+            <button
+              onClick={() => void clearAllAlerts()}
+              className="text-sm text-gray-500 hover:text-red-600"
+            >
+              Clear
+            </button>
+          )}
+        </div>
         {alerts.length === 0 ? (
-          <div className={`${card} text-gray-600`}>No alerts sent yet.</div>
+          <div className={`${card} text-gray-600`}>No alerts yet.</div>
         ) : (
           <div className={`${card} divide-y divide-gray-100`}>
             {alerts.map((a) => (
