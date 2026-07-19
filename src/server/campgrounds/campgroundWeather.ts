@@ -25,9 +25,44 @@ const FORECAST_WINDOW_DAYS = 14
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000
 const cache = new Map<string, { conditions: Conditions | null; expiresAt: number }>()
 
-/** Test-only: clear the conditions cache. */
+/** Test-only: clear the conditions caches. */
 export function __resetWeatherCacheForTests(): void {
   cache.clear()
+  monthCache.clear()
+}
+
+export interface MonthClimate {
+  month: string // 'YYYY-MM'
+  label: string // 'December'
+  highF: number
+  lowF: number
+  snowDays: number
+  advisory: Conditions['advisory']
+}
+
+interface MonthCacheEntry {
+  data: { highF: number; lowF: number; snowDays: number; elevationFt: number } | null
+  expiresAt: number
+}
+const monthCache = new Map<string, MonthCacheEntry>()
+
+/** Every 'YYYY-MM' from start..end inclusive (capped at 24). */
+export function monthsBetween(start: string, end: string): string[] {
+  const out: string[] = []
+  let y = Number(start.slice(0, 4))
+  let m = Number(start.slice(5, 7))
+  const ey = Number(end.slice(0, 4))
+  const em = Number(end.slice(5, 7))
+  let guard = 0
+  while ((y < ey || (y === ey && m <= em)) && guard++ < 24) {
+    out.push(`${y}-${String(m).padStart(2, '0')}`)
+    m += 1
+    if (m > 12) {
+      m = 1
+      y += 1
+    }
+  }
+  return out
 }
 
 const MONTHS = [
@@ -137,4 +172,76 @@ export async function getConditions(
 
   cache.set(key, { conditions, expiresAt: Date.now() + CACHE_TTL_MS })
   return conditions
+}
+
+/** Historical typical for one calendar month (avg high/low, snow days). */
+async function typicalForMonth(
+  lat: number,
+  lng: number,
+  histYear: number,
+  month1: number,
+  fetchImpl: typeof fetch,
+): Promise<MonthCacheEntry['data']> {
+  const key = `${lat.toFixed(2)},${lng.toFixed(2)},${histYear}-${month1}`
+  const cached = monthCache.get(key)
+  if (cached && cached.expiresAt > Date.now()) return cached.data
+
+  let data: MonthCacheEntry['data'] = null
+  try {
+    const url = `${ARCHIVE_BASE}?latitude=${lat}&longitude=${lng}&start_date=${histYear}-${String(month1).padStart(2, '0')}-01&end_date=${monthEnd(histYear, month1)}&daily=temperature_2m_max,temperature_2m_min,snowfall_sum&temperature_unit=fahrenheit`
+    const res = await politeFetchJson<OpenMeteoDaily>(url, { fetchImpl })
+    const d = res.data?.daily
+    const highs = (d?.temperature_2m_max ?? []).filter((x): x is number => x != null)
+    const lows = (d?.temperature_2m_min ?? []).filter((x): x is number => x != null)
+    if (res.ok && highs.length && lows.length) {
+      data = {
+        highF: Math.round(mean(highs)),
+        lowF: Math.round(mean(lows)),
+        snowDays: (d?.snowfall_sum ?? []).filter((x) => (x ?? 0) > 0).length,
+        elevationFt: metersToFeet(res.data?.elevation ?? 0),
+      }
+    }
+  } catch {
+    monthCache.set(key, { data: null, expiresAt: Date.now() + 5 * 60 * 1000 })
+    return null
+  }
+  monthCache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS })
+  return data
+}
+
+/**
+ * Typical climate for EACH month in a watch window — a watch is a window, not a
+ * single trip, and a cancellation could free any night in it.
+ */
+export async function getMonthlyClimate(
+  lat: number,
+  lng: number,
+  start: string,
+  end: string,
+  now: Date = new Date(),
+  fetchImpl: typeof fetch = globalThis.fetch,
+): Promise<{ elevationFt: number; months: MonthClimate[] }> {
+  const empty = { elevationFt: 0, months: [] as MonthClimate[] }
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return empty
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) return empty
+
+  const histYear = now.getUTCFullYear() - 1
+  const months: MonthClimate[] = []
+  let elevationFt = 0
+  for (const ym of monthsBetween(start, end)) {
+    const month1 = Number(ym.slice(5, 7))
+    const t = await typicalForMonth(lat, lng, histYear, month1, fetchImpl)
+    if (t) {
+      elevationFt = t.elevationFt
+      months.push({
+        month: ym,
+        label: MONTHS[month1 - 1],
+        highF: t.highF,
+        lowF: t.lowF,
+        snowDays: t.snowDays,
+        advisory: advisoryFor(t.lowF, t.highF),
+      })
+    }
+  }
+  return { elevationFt, months }
 }

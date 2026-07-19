@@ -1,5 +1,9 @@
 /** @jest-environment node */
-import { getConditions, __resetWeatherCacheForTests } from './campgroundWeather.js'
+import {
+  getConditions,
+  getMonthlyClimate,
+  __resetWeatherCacheForTests,
+} from './campgroundWeather.js'
 
 function meteoFetch(payload: unknown): typeof fetch {
   return (async () => ({ ok: true, status: 200, json: async () => payload })) as unknown as typeof fetch
@@ -48,5 +52,28 @@ describe('getConditions', () => {
     expect(await getConditions(NaN, 0, '2026-12-20', NOW, spy as unknown as typeof fetch)).toBeNull()
     expect(await getConditions(40, -121, 'notadate', NOW, spy as unknown as typeof fetch)).toBeNull()
     expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('summarizes typical climate for each month in a watch window', async () => {
+    const payload = {
+      elevation: 1800,
+      daily: {
+        temperature_2m_max: [40, 42],
+        temperature_2m_min: [28, 30],
+        snowfall_sum: [1, 2],
+      },
+    }
+    const { elevationFt, months } = await getMonthlyClimate(
+      40.5,
+      -121.5,
+      '2026-11-10',
+      '2026-12-20',
+      NOW,
+      meteoFetch(payload),
+    )
+    expect(months.map((m) => m.label)).toEqual(['November', 'December'])
+    expect(months[0].advisory).toBe('freezing')
+    expect(months[1].snowDays).toBe(2)
+    expect(elevationFt).toBe(Math.round(1800 * 3.28084))
   })
 })

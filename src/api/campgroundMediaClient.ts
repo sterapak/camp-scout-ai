@@ -43,18 +43,31 @@ export interface Conditions {
   label: string
 }
 
-/** Weather/climate for a Recreation.gov campground (by facility id) on a date. */
-export async function fetchConditions(facilityId: string, date: string): Promise<Conditions | null> {
+export interface MonthClimate {
+  month: string
+  label: string
+  highF: number
+  lowF: number
+  snowDays: number
+  advisory: 'freezing' | 'cold' | 'hot' | null
+}
+
+/** Typical climate for each month in a watch window (start..end). */
+export async function fetchMonthlyClimate(
+  facilityId: string,
+  start: string,
+  end: string,
+): Promise<{ elevationFt: number; months: MonthClimate[] }> {
   try {
     const res = await fetch(
-      `/api/weather?facilityId=${encodeURIComponent(facilityId)}&date=${encodeURIComponent(date)}`,
+      `/api/weather?facilityId=${encodeURIComponent(facilityId)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
       { credentials: 'same-origin' },
     )
-    if (!res.ok) return null
-    const data = (await res.json()) as { conditions?: Conditions | null }
-    return data.conditions ?? null
+    if (!res.ok) return { elevationFt: 0, months: [] }
+    const data = (await res.json()) as { elevationFt?: number; months?: MonthClimate[] }
+    return { elevationFt: data.elevationFt ?? 0, months: data.months ?? [] }
   } catch {
-    return null
+    return { elevationFt: 0, months: [] }
   }
 }
 

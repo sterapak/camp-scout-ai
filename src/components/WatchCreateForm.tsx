@@ -6,7 +6,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 
 import { createWatch, WatchApiError, type Watch } from '../api/watchClient.js'
-import { fetchConditions, type Conditions } from '../api/campgroundMediaClient.js'
+import { fetchMonthlyClimate, type MonthClimate } from '../api/campgroundMediaClient.js'
 import { parseRecGovCampgroundId } from '../utils/recgov.js'
 
 interface WatchCreateFormProps {
@@ -28,31 +28,30 @@ const DAY_LABELS = [
   { n: 6, l: 'Sat' },
 ]
 
-function advisoryText(c: Conditions): { emoji: string; text: string; cls: string } | null {
-  if (c.advisory === 'freezing')
+function advisoryBadge(m: MonthClimate): { emoji: string; text: string; cls: string } | null {
+  if (m.advisory === 'freezing')
     return {
       emoji: '❄️',
-      text: `Freezing typical${c.snowDays ? ` · snow ~${c.snowDays} days` : ''}`,
+      text: `freezing${m.snowDays ? ` · snow ~${m.snowDays}d` : ''}`,
       cls: 'text-blue-700',
     }
-  if (c.advisory === 'cold') return { emoji: '🧥', text: 'Cold nights', cls: 'text-blue-600' }
-  if (c.advisory === 'hot') return { emoji: '🥵', text: 'Hot', cls: 'text-orange-600' }
+  if (m.advisory === 'cold') return { emoji: '🧥', text: 'cold nights', cls: 'text-blue-600' }
+  if (m.advisory === 'hot') return { emoji: '🥵', text: 'hot', cls: 'text-orange-600' }
   return null
 }
 
-function ConditionRow({ c, when }: { c: Conditions; when: string }) {
-  const adv = advisoryText(c)
+function MonthRow({ m }: { m: MonthClimate }) {
+  const adv = advisoryBadge(m)
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-3">
       <span className="text-gray-700">
-        <span className="font-medium">{when}</span> {c.highF}° / {c.lowF}°F
-        {adv && (
-          <span className={`ml-2 ${adv.cls}`}>
-            {adv.emoji} {adv.text}
-          </span>
-        )}
+        <span className="font-medium">{m.label}</span> {m.highF}° / {m.lowF}°F
       </span>
-      <span className="text-xs text-gray-400">{c.kind === 'typical' ? 'typical avg' : 'forecast'}</span>
+      {adv && (
+        <span className={adv.cls}>
+          {adv.emoji} {adv.text}
+        </span>
+      )}
     </div>
   )
 }
@@ -70,25 +69,22 @@ export default function WatchCreateForm({
   const [weekdays, setWeekdays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [conditions, setConditions] = useState<{ start: Conditions | null; end: Conditions | null }>({
-    start: null,
-    end: null,
+  const [climate, setClimate] = useState<{ elevationFt: number; months: MonthClimate[] }>({
+    elevationFt: 0,
+    months: [],
   })
 
-  // Show weather/climate across the watch window so you don't grab a spot in
-  // conditions you're not packed for — a range can span summer to freezing.
+  // A watch is a WINDOW, not a trip — a cancellation can free any night in it.
+  // So show typical climate for each month in the range, not just start/end.
   useEffect(() => {
     const facilityId = parseRecGovCampgroundId(url)
-    if (!facilityId) {
-      setConditions({ start: null, end: null })
+    if (!facilityId || !startDate || !endDate) {
+      setClimate({ elevationFt: 0, months: [] })
       return
     }
     let cancelled = false
-    Promise.all([
-      startDate ? fetchConditions(facilityId, startDate) : Promise.resolve(null),
-      endDate && endDate !== startDate ? fetchConditions(facilityId, endDate) : Promise.resolve(null),
-    ]).then(([start, end]) => {
-      if (!cancelled) setConditions({ start, end })
+    fetchMonthlyClimate(facilityId, startDate, endDate).then((c) => {
+      if (!cancelled) setClimate(c)
     })
     return () => {
       cancelled = true
@@ -200,21 +196,19 @@ export default function WatchCreateForm({
         </div>
       </div>
 
-      {(conditions.start || conditions.end) && (
+      {climate.months.length > 0 && (
         <div className="space-y-1 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
           <div className="flex items-center justify-between">
-            <span className="font-medium text-gray-800">Conditions for your dates</span>
-            <span className="text-xs text-gray-500">
-              {(conditions.start?.elevationFt ?? conditions.end?.elevationFt ?? 0).toLocaleString()} ft
-            </span>
+            <span className="font-medium text-gray-800">Typical weather by month</span>
+            <span className="text-xs text-gray-500">{climate.elevationFt.toLocaleString()} ft</span>
           </div>
-          {conditions.start && <ConditionRow c={conditions.start} when="Arrive" />}
-          {conditions.end && <ConditionRow c={conditions.end} when="Depart" />}
-          {(conditions.start?.kind === 'typical' || conditions.end?.kind === 'typical') && (
-            <p className="text-xs text-gray-400">
-              &ldquo;Typical&rdquo; = historical monthly average, not a forecast.
-            </p>
-          )}
+          {climate.months.map((m) => (
+            <MonthRow key={m.month} m={m} />
+          ))}
+          <p className="text-xs text-gray-400">
+            Historical monthly averages across your watch window — a cancellation could free any
+            night in it.
+          </p>
         </div>
       )}
 

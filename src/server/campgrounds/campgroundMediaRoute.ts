@@ -12,7 +12,7 @@ import { verifySession } from '../auth/jwt.js'
 import { fetchFacilityPhoto } from './ridbMedia.js'
 import { fetchFacilityCoords, fetchStateCampgrounds } from './ridbFacilities.js'
 import { geocodeZip } from './geocodeZip.js'
-import { getConditions } from './campgroundWeather.js'
+import { getConditions, getMonthlyClimate } from './campgroundWeather.js'
 
 const PHOTO_RE = /^\/api\/campgrounds\/(\d+)\/photo$/
 const RECGOV_LIST_PATH = '/api/campgrounds/recgov'
@@ -72,9 +72,22 @@ export async function handleCampgroundMediaRoutes(
         }
       }
     }
-    const conditions =
-      Number.isFinite(lat) && Number.isFinite(lng) ? await getConditions(lat, lng, date) : null
+    const hasCoords = Number.isFinite(lat) && Number.isFinite(lng)
     res.setHeader('Cache-Control', 'private, max-age=21600')
+
+    // Monthly summary across a watch window (start..end).
+    const start = params.get('start') ?? ''
+    const end = params.get('end') ?? ''
+    if (start && end) {
+      const climate = hasCoords
+        ? await getMonthlyClimate(lat, lng, start, end)
+        : { elevationFt: 0, months: [] }
+      sendJson(res, 200, climate)
+      return true
+    }
+
+    // Single date.
+    const conditions = hasCoords ? await getConditions(lat, lng, date) : null
     sendJson(res, 200, { conditions })
     return true
   }
