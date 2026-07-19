@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { FiBell } from 'react-icons/fi'
 import AvailabilityNotice from '../components/AvailabilityNotice'
 import DonationCard from '../components/DonationCard'
 import CampgroundFilters from '../components/CampgroundFilters'
@@ -130,6 +131,27 @@ export default function CampgroundsPage() {
         <p className="mt-1 text-sm text-gray-600">
           Curated Northern California picks plus every California Recreation.gov campground.
         </p>
+      </div>
+
+      <div className="rounded-xl bg-gradient-to-r from-green-700 to-green-600 p-5 text-white shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <FiBell className="mt-0.5 shrink-0 text-green-100" size={24} />
+            <div>
+              <h3 className="text-lg font-semibold">Never miss a cancellation</h3>
+              <p className="mt-1 max-w-2xl text-sm text-green-50">
+                Fully booked? Set a watch on any campground and dates — we&apos;ll ping your phone
+                the moment a spot frees up, with a tap-to-book link. Weekends-only if you like.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/watches"
+            className="shrink-0 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-green-800 shadow-sm hover:bg-green-50"
+          >
+            Set up a watch →
+          </Link>
+        </div>
       </div>
 
       <AvailabilityNotice />

@@ -1,8 +1,9 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { FiExternalLink, FiMapPin } from 'react-icons/fi'
+import { FiBell, FiExternalLink, FiMapPin } from 'react-icons/fi'
 import AvailabilityNotice from './AvailabilityNotice'
 import CampgroundThumbnail from './CampgroundThumbnail'
+import { isWatchable } from '../utils/recgov'
 
 /** @param {{ campground: import('../data/campgroundSchema.js').Campground }} props */
 export default function CampgroundCard({ campground }) {
@@ -20,6 +21,12 @@ export default function CampgroundCard({ campground }) {
               <FiMapPin className="mr-1 flex-shrink-0" />
               {campground.region}
             </p>
+            {isWatchable(campground.reservationUrl) && (
+              <span className="mt-1.5 flex w-fit items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-800">
+                <FiBell size={11} />
+                Cancellation alerts
+              </span>
+            )}
           </div>
           <AvailabilityNotice compact />
         </div>
