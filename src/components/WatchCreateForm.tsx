@@ -73,6 +73,7 @@ export default function WatchCreateForm({
     elevationFt: 0,
     months: [],
   })
+  const [loadingWeather, setLoadingWeather] = useState(false)
 
   // A watch is a WINDOW, not a trip — a cancellation can free any night in it.
   // So show typical climate for each month in the range, not just start/end.
@@ -80,11 +81,15 @@ export default function WatchCreateForm({
     const facilityId = parseRecGovCampgroundId(url)
     if (!facilityId || !startDate || !endDate) {
       setClimate({ elevationFt: 0, months: [] })
+      setLoadingWeather(false)
       return
     }
     let cancelled = false
+    setLoadingWeather(true)
     fetchMonthlyClimate(facilityId, startDate, endDate).then((c) => {
-      if (!cancelled) setClimate(c)
+      if (cancelled) return
+      setClimate(c)
+      setLoadingWeather(false)
     })
     return () => {
       cancelled = true
@@ -195,6 +200,13 @@ export default function WatchCreateForm({
           />
         </div>
       </div>
+
+      {loadingWeather && climate.months.length === 0 && (
+        <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">
+          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-300 border-t-green-600" />
+          Loading typical weather for your dates…
+        </div>
+      )}
 
       {climate.months.length > 0 && (
         <div className="space-y-1 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">

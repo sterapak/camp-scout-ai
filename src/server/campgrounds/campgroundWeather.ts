@@ -226,22 +226,28 @@ export async function getMonthlyClimate(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) return empty
 
   const histYear = now.getUTCFullYear() - 1
+  // Fetch every month in parallel (was sequential — slow for a wide window).
+  const entries = await Promise.all(
+    monthsBetween(start, end).map(async (ym) => {
+      const month1 = Number(ym.slice(5, 7))
+      const t = await typicalForMonth(lat, lng, histYear, month1, fetchImpl)
+      return t ? { ym, month1, t } : null
+    }),
+  )
+
   const months: MonthClimate[] = []
   let elevationFt = 0
-  for (const ym of monthsBetween(start, end)) {
-    const month1 = Number(ym.slice(5, 7))
-    const t = await typicalForMonth(lat, lng, histYear, month1, fetchImpl)
-    if (t) {
-      elevationFt = t.elevationFt
-      months.push({
-        month: ym,
-        label: MONTHS[month1 - 1],
-        highF: t.highF,
-        lowF: t.lowF,
-        snowDays: t.snowDays,
-        advisory: advisoryFor(t.lowF, t.highF),
-      })
-    }
+  for (const e of entries) {
+    if (!e) continue
+    elevationFt = e.t.elevationFt
+    months.push({
+      month: e.ym,
+      label: MONTHS[e.month1 - 1],
+      highF: e.t.highF,
+      lowF: e.t.lowF,
+      snowDays: e.t.snowDays,
+      advisory: advisoryFor(e.t.lowF, e.t.highF),
+    })
   }
   return { elevationFt, months }
 }
