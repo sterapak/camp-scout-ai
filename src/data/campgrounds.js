@@ -206,7 +206,7 @@ export const campgrounds = [
     name: 'Manzanita Lake Campground (Lassen Volcanic NP)',
     region: 'Lassen County',
     sourceUrl: 'https://www.nps.gov/lavo/planyourvisit/manzanita-lake-campground.htm',
-    reservationUrl: 'https://www.recreation.gov/camping/campgrounds/232447',
+    reservationUrl: 'https://www.recreation.gov/camping/campgrounds/234039',
     amenities: ['Restrooms', 'Potable water', 'Camp store', 'Lake views'],
     rules: ['Food must be stored in bear-resistant containers', 'Park entrance fee required'],
     dogPolicy: 'Dogs allowed on leash in campground and on the Manzanita Lake Trail only.',
