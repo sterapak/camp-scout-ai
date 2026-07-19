@@ -3,9 +3,10 @@
  * and the campground detail page (prefilled with that campground's name + URL,
  * URL hidden). Phase 1 supports Recreation.gov campgrounds only.
  */
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 
 import { createWatch, WatchApiError, type Watch } from '../api/watchClient.js'
+import { fetchConditions, type Conditions } from '../api/campgroundMediaClient.js'
 import { parseRecGovCampgroundId } from '../utils/recgov.js'
 
 interface WatchCreateFormProps {
@@ -40,6 +41,24 @@ export default function WatchCreateForm({
   const [weekdays, setWeekdays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [conditions, setConditions] = useState<Conditions | null>(null)
+
+  // Show the weather/climate for the arrival date so you don't grab a spot in
+  // conditions you're not packed for (e.g. December at a high-elevation site).
+  useEffect(() => {
+    const facilityId = parseRecGovCampgroundId(url)
+    if (!facilityId || !startDate) {
+      setConditions(null)
+      return
+    }
+    let cancelled = false
+    fetchConditions(facilityId, startDate).then((c) => {
+      if (!cancelled) setConditions(c)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [url, startDate])
 
   function toggleDay(day: number) {
     setWeekdays((prev) =>
@@ -145,6 +164,35 @@ export default function WatchCreateForm({
           />
         </div>
       </div>
+
+      {conditions && (
+        <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-medium text-gray-800">{conditions.label}</span>
+            <span className="text-gray-600">
+              {conditions.highF}° / {conditions.lowF}°F · {conditions.elevationFt.toLocaleString()} ft
+            </span>
+          </div>
+          {conditions.advisory === 'freezing' && (
+            <p className="mt-1 text-blue-700">
+              ❄️ Freezing nights typical
+              {conditions.snowDays ? ` · snow ~${conditions.snowDays} days that month` : ''} — pack
+              for winter camping.
+            </p>
+          )}
+          {conditions.advisory === 'cold' && (
+            <p className="mt-1 text-blue-600">🧥 Cold nights — bring warm layers.</p>
+          )}
+          {conditions.advisory === 'hot' && (
+            <p className="mt-1 text-orange-600">🥵 Hot — plan for heat and shade.</p>
+          )}
+          {conditions.kind === 'typical' && (
+            <p className="mt-1 text-xs text-gray-400">
+              Typical for the month (historical average), not a forecast.
+            </p>
+          )}
+        </div>
+      )}
 
       <div>
         <label className={label} htmlFor="watch-nights">Minimum nights</label>

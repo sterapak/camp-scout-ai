@@ -217,7 +217,7 @@ export default function CampgroundDetailPage() {
           <h3 className="text-lg font-medium text-gray-900">Watch for cancellations</h3>
           {watchCreated ? (
             <p className="text-sm text-green-700">
-              Watch created — you&apos;ll get an SMS if a spot frees up.{' '}
+              Watch created — you&apos;ll get a push alert if a spot frees up.{' '}
               <Link to="/watches" className="underline">Manage watches</Link>
             </p>
           ) : showWatch ? (
@@ -232,7 +232,7 @@ export default function CampgroundDetailPage() {
           ) : (
             <>
               <p className="text-sm text-gray-600">
-                Fully booked? Get an SMS the moment someone cancels.
+                Fully booked? Get an instant alert the moment someone cancels.
               </p>
               <button
                 onClick={() => setShowWatch(true)}

@@ -88,7 +88,9 @@ export default function NotifySettings() {
     <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-4">
       <div>
         <h3 className="text-lg font-semibold text-gray-900">Alert notifications</h3>
-        <p className="text-sm text-gray-600">Where to send cancellation alerts.</p>
+        <p className="text-sm text-gray-600">
+          Cancellation alerts arrive as an instant push (via the Pushover app) and by email.
+        </p>
       </div>
 
       <div>
@@ -101,7 +103,7 @@ export default function NotifySettings() {
           placeholder="+15551234567"
         />
         <p className="mt-1 text-xs text-gray-500">
-          E.164 format. On a Twilio trial, texts only reach the number you verified.
+          SMS is currently unavailable (carrier registration). Alerts go via push and email below.
         </p>
       </div>
 
@@ -119,7 +121,7 @@ export default function NotifySettings() {
       <div className="flex flex-col gap-2">
         <label className="flex items-center gap-2 text-sm text-gray-700">
           <input type="checkbox" checked={smsEnabled} onChange={(e) => setSmsEnabled(e.target.checked)} />
-          Send SMS alerts
+          Send SMS alerts <span className="text-xs text-gray-400">(currently unavailable)</span>
         </label>
         <label className="flex items-center gap-2 text-sm text-gray-700">
           <input type="checkbox" checked={emailEnabled} onChange={(e) => setEmailEnabled(e.target.checked)} />

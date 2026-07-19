@@ -107,7 +107,7 @@ export default function WatchesPage() {
       <div className="max-w-5xl mx-auto space-y-6">
         <h2 className="text-2xl font-semibold text-gray-900">Watches</h2>
         <div className={`${card} text-gray-600`}>
-          Cancellation watches with SMS alerts are only available on the hosted app at{' '}
+          Cancellation watches with instant alerts are only available on the hosted app at{' '}
           <a className="text-green-700 underline" href="https://campscout.terapak.com/watches">
             campscout.terapak.com
           </a>
@@ -122,8 +122,9 @@ export default function WatchesPage() {
       <div>
         <h2 className="text-2xl font-semibold text-gray-900">Watches</h2>
         <p className="text-gray-600">
-          Get an SMS the moment a fully-booked campground has a cancellation. Set your phone in{' '}
-          <a className="text-green-700 underline" href="/settings">Settings</a> first.
+          Get an instant push notification (and email) the moment a fully-booked campground has a
+          cancellation. Set up alerts in{' '}
+          <a className="text-green-700 underline" href="/settings">Settings</a>.
         </p>
       </div>
 

@@ -32,6 +32,32 @@ export interface RecgovCampground {
   description: string
 }
 
+export interface Conditions {
+  kind: 'forecast' | 'typical'
+  highF: number
+  lowF: number
+  elevationFt: number
+  snowLikely: boolean
+  snowDays?: number
+  advisory: 'freezing' | 'cold' | 'hot' | null
+  label: string
+}
+
+/** Weather/climate for a Recreation.gov campground (by facility id) on a date. */
+export async function fetchConditions(facilityId: string, date: string): Promise<Conditions | null> {
+  try {
+    const res = await fetch(
+      `/api/weather?facilityId=${encodeURIComponent(facilityId)}&date=${encodeURIComponent(date)}`,
+      { credentials: 'same-origin' },
+    )
+    if (!res.ok) return null
+    const data = (await res.json()) as { conditions?: Conditions | null }
+    return data.conditions ?? null
+  } catch {
+    return null
+  }
+}
+
 export interface ZipLocation {
   lat: number
   lng: number
