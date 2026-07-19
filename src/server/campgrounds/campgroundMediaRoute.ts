@@ -59,17 +59,11 @@ export async function handleCampgroundMediaRoutes(
     let lng = lngParam ? Number(lngParam) : NaN
     const facilityId = params.get('facilityId') ?? ''
     if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && /^\d+$/.test(facilityId)) {
-      const cg = (await fetchStateCampgrounds('CA')).find((c) => c.id === facilityId)
-      if (cg && cg.latitude != null && cg.longitude != null) {
-        lat = cg.latitude
-        lng = cg.longitude
-      } else {
-        // Not in the imported list (e.g. curated campgrounds) — resolve directly.
-        const co = await fetchFacilityCoords(facilityId)
-        if (co) {
-          lat = co.lat
-          lng = co.lng
-        }
+      // Single per-facility lookup (~200ms) — NOT the full state import (~6.6s).
+      const co = await fetchFacilityCoords(facilityId)
+      if (co) {
+        lat = co.lat
+        lng = co.lng
       }
     }
     const hasCoords = Number.isFinite(lat) && Number.isFinite(lng)
