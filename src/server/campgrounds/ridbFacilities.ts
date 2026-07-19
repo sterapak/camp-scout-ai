@@ -46,6 +46,50 @@ const cache = new Map<string, CacheEntry>()
 /** Test-only: clear the in-memory facilities cache. */
 export function __resetFacilitiesCacheForTests(): void {
   cache.clear()
+  coordsCache.clear()
+}
+
+interface CoordsEntry {
+  coords: { lat: number; lng: number } | null
+  expiresAt: number
+}
+const coordsCache = new Map<string, CoordsEntry>()
+
+/**
+ * Coordinates for ANY Recreation.gov facility id (via RIDB's per-facility
+ * endpoint) — works for facilities not in the imported state list (e.g. curated
+ * campgrounds like Upper Pines). Cached; null with no key / on error.
+ */
+export async function fetchFacilityCoords(
+  facilityId: string,
+  fetchImpl: typeof fetch = globalThis.fetch,
+): Promise<{ lat: number; lng: number } | null> {
+  if (!/^\d+$/.test(facilityId)) return null
+  const cached = coordsCache.get(facilityId)
+  if (cached && cached.expiresAt > Date.now()) return cached.coords
+
+  const apiKey = process.env.RIDB_API_KEY
+  if (!apiKey) return null
+
+  let coords: { lat: number; lng: number } | null = null
+  try {
+    const res = await fetchImpl(`${RIDB_BASE}/facilities/${facilityId}`, {
+      headers: { apikey: apiKey, Accept: 'application/json' },
+    })
+    if (res.ok) {
+      const f = (await res.json()) as RidbFacility
+      const lat = Number(f.FacilityLatitude)
+      const lng = Number(f.FacilityLongitude)
+      if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
+        coords = { lat, lng }
+      }
+    }
+  } catch {
+    coordsCache.set(facilityId, { coords: null, expiresAt: Date.now() + 5 * 60 * 1000 })
+    return null
+  }
+  coordsCache.set(facilityId, { coords, expiresAt: Date.now() + CACHE_TTL_MS })
+  return coords
 }
 
 // Acronyms to keep uppercase after title-casing RIDB's ALL-CAPS names.

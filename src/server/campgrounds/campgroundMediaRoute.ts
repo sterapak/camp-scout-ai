@@ -10,7 +10,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { parseCookies, SESSION_COOKIE } from '../auth/cookies.js'
 import { verifySession } from '../auth/jwt.js'
 import { fetchFacilityPhoto } from './ridbMedia.js'
-import { fetchStateCampgrounds } from './ridbFacilities.js'
+import { fetchFacilityCoords, fetchStateCampgrounds } from './ridbFacilities.js'
 import { geocodeZip } from './geocodeZip.js'
 import { getConditions } from './campgroundWeather.js'
 
@@ -63,6 +63,13 @@ export async function handleCampgroundMediaRoutes(
       if (cg && cg.latitude != null && cg.longitude != null) {
         lat = cg.latitude
         lng = cg.longitude
+      } else {
+        // Not in the imported list (e.g. curated campgrounds) — resolve directly.
+        const co = await fetchFacilityCoords(facilityId)
+        if (co) {
+          lat = co.lat
+          lng = co.lng
+        }
       }
     }
     const conditions =

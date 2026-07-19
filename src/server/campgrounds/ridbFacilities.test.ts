@@ -1,6 +1,7 @@
 /** @jest-environment node */
 import {
   californiaRegion,
+  fetchFacilityCoords,
   fetchStateCampgrounds,
   titleCaseName,
   __resetFacilitiesCacheForTests,
@@ -104,6 +105,27 @@ describe('fetchStateCampgrounds (RIDB facilities)', () => {
     await fetchStateCampgrounds('CA', impl)
     await fetchStateCampgrounds('CA', impl)
     expect(calls()).toBe(1)
+  })
+
+  it('resolves coords for any facility id via RIDB (curated campgrounds not in the list)', async () => {
+    const fetchImpl = (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ FacilityLatitude: 37.7455, FacilityLongitude: -119.5581 }),
+    })) as unknown as typeof fetch
+    expect(await fetchFacilityCoords('232447', fetchImpl)).toEqual({ lat: 37.7455, lng: -119.5581 })
+  })
+
+  it('returns null coords for 0,0 or non-numeric ids', async () => {
+    const zero = (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ FacilityLatitude: 0, FacilityLongitude: 0 }),
+    })) as unknown as typeof fetch
+    expect(await fetchFacilityCoords('999', zero)).toBeNull()
+    const spy = jest.fn()
+    expect(await fetchFacilityCoords('abc', spy as unknown as typeof fetch)).toBeNull()
+    expect(spy).not.toHaveBeenCalled()
   })
 
   it('buckets coordinates into coarse California regions', () => {
