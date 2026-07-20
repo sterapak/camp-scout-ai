@@ -20,6 +20,7 @@ type SummaryPageState =
   | { status: 'idle' }
   | { status: 'loading' }
   | { status: 'success'; sections: SummarySectionContent; citations: Citation[]; sources: UniqueSourceReference[]; confidence: AnswerConfidenceLevel; generatedAt?: string; knowledgeSnapshot?: KnowledgeSnapshot }
+  | { status: 'unavailable'; message: string }
   | { status: 'insufficient_context'; message: string }
   | { status: 'error'; errorMessage: string }
 
@@ -49,7 +50,16 @@ export default function CampgroundDetailPage() {
     }
   }, [id, staticCampground])
   const [summaryState, setSummaryState] = useState<SummaryPageState>(
-    { status: hasKnowledge ? 'loading' : 'idle' },
+    {
+      // Not 'idle' when we know there is no knowledge for this campground: idle
+      // renders nothing at all, which is why the card silently vanished on every
+      // Recreation.gov campground (knowledge is keyed by slug, so a numeric RIDB
+      // id never matches). 'unavailable' renders an explicit, honest state.
+      status: hasKnowledge ? 'loading' : 'unavailable',
+      ...(hasKnowledge
+        ? {}
+        : { message: 'An AI summary has not been generated for this campground yet.' }),
+    } as SummaryPageState,
   )
   const [showWatch, setShowWatch] = useState(false)
   const [watchCreated, setWatchCreated] = useState(false)

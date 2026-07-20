@@ -7,7 +7,7 @@
  * shared across requests on the single instance.
  */
 import { sql } from 'drizzle-orm'
-import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { integer, primaryKey, real, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 export const aiBudgetUsage = sqliteTable('ai_budget_usage', {
   bucketKey: text('bucket_key').primaryKey(),
@@ -134,3 +134,37 @@ export const userSettings = sqliteTable('user_settings', {
 })
 
 export type UserSettingsRow = typeof userSettings.$inferSelect
+
+/**
+ * Generated campground AI summaries, so they survive restarts and deploys.
+ *
+ * Previously these lived ONLY in an in-memory Map, so every deploy silently
+ * discarded every summary and the next visitor paid full generation latency and
+ * cost again. ~$0.0012 per summary is small per unit but recurs forever, and is
+ * unbounded once summaries are generated on demand across the RIDB catalog.
+ *
+ * Primary key is (campground_id, snapshot_id) — the same key the in-memory cache
+ * already used. Including the knowledge snapshot id is what makes invalidation
+ * automatic: when a campground's knowledge changes its snapshot id changes, the
+ * old row stops matching, and a fresh summary is generated. Old rows are
+ * harmless history rather than stale reads.
+ */
+export const campgroundSummaries = sqliteTable(
+  'campground_summaries',
+  {
+    campgroundId: text('campground_id').notNull(),
+    snapshotId: text('snapshot_id').notNull(),
+    /** Full CampgroundSummarySuccess payload, JSON-encoded. */
+    summaryJson: text('summary_json').notNull(),
+    /** Full KnowledgeSnapshot, JSON-encoded — returned to the client verbatim. */
+    knowledgeSnapshotJson: text('knowledge_snapshot_json').notNull(),
+    /** ISO 8601; powers the "Generated on <date>" line in the UI. */
+    generatedAt: text('generated_at').notNull(),
+    updatedAt: text('updated_at').notNull().default(nowDefault),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.campgroundId, table.snapshotId] }),
+  }),
+)
+
+export type CampgroundSummaryRow = typeof campgroundSummaries.$inferSelect

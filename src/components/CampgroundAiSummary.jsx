@@ -28,7 +28,7 @@ const CONFIDENCE_LABELS = {
 /**
  * Google Maps-style AI summary panel for campground detail pages.
  * @param {{
- *   status: 'idle' | 'loading' | 'success' | 'insufficient_context' | 'error'
+ *   status: 'idle' | 'unavailable' | 'loading' | 'success' | 'insufficient_context' | 'error'
  *   sections?: CampgroundSummarySections
  *   citations?: import('../server/rag/groundedAnswerGenerator.js').GroundedAnswerCitation[]
  *   sources?: import('../server/rag/answerTrust.js').UniqueSourceReference[]
@@ -55,6 +55,12 @@ export default function CampgroundAiSummary({
   const [expanded, setExpanded] = useState(true)
   const [showCitations, setShowCitations] = useState(false)
 
+  // 'idle' means the request genuinely has not started yet (e.g. the campground
+  // is still resolving) — rendering an empty card would flash. 'unavailable' is
+  // different and must NOT be silent: it means we know no summary exists for this
+  // campground. Previously that case also hit `idle` and returned null, so the
+  // whole card vanished with no content, no loading state and no error — the user
+  // could not tell the difference between "nothing to show" and "the page broke".
   if (status === 'idle') {
     return null
   }
@@ -130,6 +136,12 @@ export default function CampgroundAiSummary({
 
       {status === 'insufficient_context' && (
         <p className="mt-4 text-sm text-gray-700">{message}</p>
+      )}
+
+      {status === 'unavailable' && (
+        <p className="mt-4 text-sm text-gray-700">
+          {message ?? 'An AI summary has not been generated for this campground yet.'}
+        </p>
       )}
 
       {status === 'success' && sections && expanded && (

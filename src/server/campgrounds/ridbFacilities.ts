@@ -124,6 +124,14 @@ export function californiaRegion(lat: number | null, lon: number | null): string
   return lon >= -117.5 ? 'Southern California (Desert)' : 'Southern California'
 }
 
+/**
+ * Excerpt length for the state-wide list response. This endpoint returns EVERY
+ * facility for a state (~2000 for CA) in one payload, so full descriptions here
+ * would add several hundred KB to a request that only needs a preview. The
+ * detail view should fetch full text per-facility instead.
+ */
+const DESCRIPTION_EXCERPT_MAX = 280
+
 function cleanDescription(html: string | undefined): string {
   if (!html) return ''
   const text = html
@@ -131,7 +139,18 @@ function cleanDescription(html: string | undefined): string {
     .replace(/&[a-z]+;/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-  return text.length > 280 ? `${text.slice(0, 277)}…` : text
+
+  if (text.length <= DESCRIPTION_EXCERPT_MAX) return text
+
+  // Break on a word boundary. The old code did a bare slice(0, 277), which cut
+  // mid-word and rendered as "...The campground is t…" on the detail page.
+  // Only back up to the last space if one exists reasonably near the end —
+  // otherwise (a very long unbroken token) a hard cut is still better than
+  // returning almost nothing.
+  const truncated = text.slice(0, DESCRIPTION_EXCERPT_MAX)
+  const lastSpace = truncated.lastIndexOf(' ')
+  const safeLength = lastSpace > DESCRIPTION_EXCERPT_MAX * 0.6 ? lastSpace : DESCRIPTION_EXCERPT_MAX
+  return `${truncated.slice(0, safeLength).trim()}…`
 }
 
 function mapFacility(f: RidbFacility): RecgovCampground | null {
