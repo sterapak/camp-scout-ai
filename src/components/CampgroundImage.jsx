@@ -7,9 +7,10 @@ import { FiExternalLink, FiImage } from 'react-icons/fi'
  *   image?: import('../data/campgroundSchema.js').CampgroundImage | null
  *   campgroundName: string
  *   className?: string
+ *   onLoadError?: () => void
  * }} props
  */
-export default function CampgroundImage({ image, campgroundName, className = '' }) {
+export default function CampgroundImage({ image, campgroundName, className = '', onLoadError }) {
   const [hasError, setHasError] = useState(false)
 
   if (!image || hasError) {
@@ -31,7 +32,15 @@ export default function CampgroundImage({ image, campgroundName, className = '' 
       src={image.url}
       alt={image.altText}
       className="aspect-[4/3] w-full rounded-xl object-cover"
-      onError={() => setHasError(true)}
+      onError={() => {
+        setHasError(true)
+        // Tell the parent so it can fall back to an official Recreation.gov photo.
+        // Curated image URLs rot: as of 2026-07-19, five of nine 404'd or 403'd.
+        // Without this the page shows "Official image not available" even though a
+        // live official photo is one lookup away — the fallback previously fired
+        // only when a curated image was ABSENT, never when one existed but broke.
+        onLoadError?.()
+      }}
     />
   )
 

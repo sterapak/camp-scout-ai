@@ -64,12 +64,28 @@ export default function CampgroundDetailPage() {
   const [showWatch, setShowWatch] = useState(false)
   const [watchCreated, setWatchCreated] = useState(false)
   const [officialPhoto, setOfficialPhoto] = useState<CampgroundPhoto | null>(null)
+  // Set when a CURATED image URL fails to load. Curated urls rot — as of
+  // 2026-07-19 five of nine 404'd/403'd (NPS, two Forest Service, EID) — and the
+  // official-photo fallback below previously only ran when a curated image was
+  // ABSENT. A present-but-broken url therefore rendered "image not available"
+  // forever. Presence was checked; validity was not.
+  const [curatedImageFailed, setCuratedImageFailed] = useState(false)
+
+  // Reset per campground. Without this, one broken curated image would suppress
+  // the curated image on every campground visited afterwards. Keyed on id (not the
+  // object) so it does not re-fire on unrelated re-renders, and kept separate from
+  // the fetch effect below, which depends on curatedImageFailed and would loop.
+  useEffect(() => {
+    setCuratedImageFailed(false)
+  }, [campground?.id])
 
   // When there's no curated image, try the official Recreation.gov photo (RIDB).
   // Only recreation.gov campgrounds have a facility id to resolve.
   useEffect(() => {
     setOfficialPhoto(null)
-    if (!campground || getPrimaryImage(campground)) return undefined
+    if (!campground) return undefined
+    // Fetch when there is no curated image, OR when the curated one just failed.
+    if (getPrimaryImage(campground) && !curatedImageFailed) return undefined
     const facilityId = parseRecGovCampgroundId(campground.reservationUrl)
     if (!facilityId || !isApiAvailable()) return undefined
 
@@ -80,7 +96,7 @@ export default function CampgroundDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [campground])
+  }, [campground, curatedImageFailed])
 
   useEffect(() => {
     if (!campground || !hasKnowledge) {
@@ -148,7 +164,8 @@ export default function CampgroundDetailPage() {
     )
   }
 
-  const primaryImage = getPrimaryImage(campground) ?? officialPhoto
+  const curatedImage = getPrimaryImage(campground)
+  const primaryImage = curatedImageFailed ? officialPhoto : (curatedImage ?? officialPhoto)
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -168,7 +185,12 @@ export default function CampgroundDetailPage() {
       <AvailabilityNotice />
 
       {!hasKnowledge && (
-        <CampgroundImage image={primaryImage} campgroundName={campground.name} />
+        <CampgroundImage
+          key={primaryImage?.url ?? 'none'}
+          image={primaryImage}
+          campgroundName={campground.name}
+          onLoadError={() => setCuratedImageFailed(true)}
+        />
       )}
 
       <CampgroundAiSummary
@@ -183,7 +205,12 @@ export default function CampgroundDetailPage() {
         errorMessage={'errorMessage' in summaryState ? summaryState.errorMessage : undefined}
         imageSlot={
           hasKnowledge ? (
-            <CampgroundImage image={primaryImage} campgroundName={campground.name} />
+            <CampgroundImage
+          key={primaryImage?.url ?? 'none'}
+          image={primaryImage}
+          campgroundName={campground.name}
+          onLoadError={() => setCuratedImageFailed(true)}
+        />
           ) : undefined
         }
       />
