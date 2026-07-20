@@ -12,10 +12,9 @@ primary_region = 'sjc'
 
 [build]
   [build.args]
-    # GA4 Measurement ID. Public (ships in the page), so committing it is fine.
-    # Replace with the real G-XXXXXXX from analytics.google.com, then redeploy.
-    # Empty = analytics disabled.
-    VITE_GA_MEASUREMENT_ID = ""
+    # GA4 Measurement ID for the "Campscout" property (analytics.google.com).
+    # Public (ships in the page), so committing it is fine. Empty = analytics off.
+    VITE_GA_MEASUREMENT_ID = "G-8SX4QP18MW"
 
 [env]
   NODE_ENV = 'production'
