@@ -2,6 +2,7 @@ import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import AppShell from './components/AppShell'
 import SignInGate from './components/SignInGate'
+import PageViewTracker from './components/PageViewTracker'
 import CampgroundsPage from './pages/CampgroundsPage'
 import CampgroundDetailPage from './pages/CampgroundDetailPage'
 import SettingsPage from './pages/SettingsPage'
@@ -17,6 +18,7 @@ const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
 function AuthenticatedApp() {
   return (
     <BrowserRouter basename={basename || undefined}>
+      <PageViewTracker />
       <AppShell>
         <Routes>
           <Route path="/" element={<Navigate to="/campgrounds" />} />

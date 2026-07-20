@@ -10,6 +10,12 @@ RUN npm ci
 
 COPY . .
 
+# GA4 Measurement ID (G-XXXXXXX). Vite bakes VITE_* vars at build time, so it must
+# be present here, not at runtime. Public by design (ships in the page), so it is a
+# build arg, not a secret. Unset -> analytics no-ops. Set via fly.toml [build.args].
+ARG VITE_GA_MEASUREMENT_ID=""
+ENV VITE_GA_MEASUREMENT_ID=$VITE_GA_MEASUREMENT_ID
+
 ENV CAMP_SCOUT_BASE=/
 ENV BUILD_OUT_DIR=dist
 RUN npm run build:fly
