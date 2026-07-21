@@ -263,7 +263,7 @@ export async function generateCampgroundSummary({
   return {
     status: SUCCESS_STATUS,
     campgroundId: trimmedCampgroundId,
-    campgroundName: campground.name,
+    campgroundName,
     sections,
     citations,
     sources,
