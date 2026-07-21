@@ -18,10 +18,13 @@ primary_region = 'sjc'
 
 [env]
   NODE_ENV = 'production'
-  OPENAI_ANSWER_PROVIDER = 'fake'
-  AI_ENABLED = 'false'
-  # Explicit daily AI spend cap (also defaulted in code as a safety net).
-  AI_DAILY_BUDGET_USD = '5'
+  # AI is configured entirely via SECRETS, which override [env] at runtime — do NOT
+  # re-add AI_ENABLED / OPENAI_ANSWER_PROVIDER / AI_DAILY_BUDGET_USD here. They used
+  # to sit in [env] as 'false'/'fake'/'5' while the secrets said true/openai/1.00, so
+  # this file lied about the live state (misdiagnosed 2026-07-21). `fly secrets list`
+  # is the source of truth. Live guardrails: AI_ENABLED=true, provider=openai,
+  # AI_DAILY_BUDGET_USD=1.00, AI_MAX_REQUEST_COST_USD=0.01, AI_MAX_PROMPT_TOKENS=2500,
+  # OPENAI_MODEL=gpt-4o-mini. Unset the secret → code defaults to fake/disabled (safe).
   # SQLite lives on the /data volume (durable AI budget accounting + watches).
   DATABASE_PATH = '/data/campscout.sqlite'
   # Availability watcher: in-process scheduler that polls Recreation.gov for
