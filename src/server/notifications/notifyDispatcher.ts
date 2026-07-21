@@ -10,7 +10,7 @@ import { eq } from 'drizzle-orm'
 
 import type { Db } from '../db/index.js'
 import { alertsSent, userSettings, type WatchRow } from '../db/schema.js'
-import { buildCampgroundLink, buildSiteDeepLink } from '../availability/recGovAdapter.js'
+import { buildSiteDeepLink } from '../availability/recGovAdapter.js'
 import { buildReserveCaliforniaLink } from '../availability/reserveCaliforniaAdapter.js'
 import type { WatchMatch } from '../availability/diffEngine.js'
 import { sendSms, twilioConfigured, type SendSmsDeps } from './twilioSmsSender.js'
@@ -50,9 +50,15 @@ export function formatMessage(watch: WatchRow, match: WatchMatch, deepLink: stri
 
 /**
  * ONE message for a batch of freed slots. A campground's first poll can surface
- * hundreds of available site-nights at once; we must never send one SMS each
- * (that was the volume-spike bug). Single opening → the detailed message; many →
- * a count + example + the campground availability link.
+ * hundreds of available site-nights at once; we must never send one alert each
+ * (that was the volume-spike bug).
+ *
+ * The link deep-links to the FIRST freed site's page (recgov), NOT the campground
+ * list — one tap lands on a bookable site instead of a scroll of every site. And
+ * because recreation.gov has no URL parameter to pre-select a date (verified
+ * 2026-07-21: it strips ?date= and ignores ?checkInDate=), we keep the exact date
+ * in the text and list the freed site numbers so they can be pasted into
+ * recreation.gov's "Search Site Number or Loop" box.
  */
 export function formatBatchMessage(
   watch: WatchRow,
@@ -60,17 +66,18 @@ export function formatBatchMessage(
   deps: DispatchDeps,
 ): { body: string; deepLink: string } {
   const first = matches[0]
+  const link = deepLinkForMatch(watch.platform, first.siteId, deps)
   if (matches.length === 1) {
-    const link = deepLinkForMatch(watch.platform, first.siteId, deps)
     return { body: formatMessage(watch, first, link), deepLink: link }
   }
-  const link = deps.deepLinkFor
-    ? deepLinkForMatch(watch.platform, first.siteId, deps)
-    : watch.platform === 'reservecalifornia'
-      ? buildReserveCaliforniaLink()
-      : buildCampgroundLink(watch.facilityId)
+  const siteNumbers = [...new Set(matches.map((m) => m.siteName))]
+  const shown = siteNumbers.slice(0, 6).join(', ')
+  const more = siteNumbers.length > 6 ? ` +${siteNumbers.length - 6} more` : ''
   const loop = first.loop ? ` (${first.loop})` : ''
-  const body = `🏕 ${matches.length} openings at ${watch.campgroundName} for your dates — e.g. Site ${first.siteName}${loop} on ${first.date}. Book: ${link}`
+  const body =
+    `🏕 ${matches.length} openings at ${watch.campgroundName} for your dates. ` +
+    `Sites: ${shown}${more}. ` +
+    `Link opens ${first.siteName}${loop} on ${first.date} — Book: ${link}`
   return { body, deepLink: link }
 }
 

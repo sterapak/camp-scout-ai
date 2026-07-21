@@ -8,7 +8,7 @@ import { eq } from 'drizzle-orm'
 
 import { getDb, __resetDbForTests } from '../db/index.js'
 import { alertsSent, users, userSettings, type WatchRow } from '../db/schema.js'
-import { dispatchMatches } from './notifyDispatcher.js'
+import { dispatchMatches, formatBatchMessage } from './notifyDispatcher.js'
 import type { WatchMatch } from '../availability/diffEngine.js'
 
 function fakeTwilio() {
@@ -112,6 +112,16 @@ describe('dispatchMatches — no SMS fan-out', () => {
     expect(db.select().from(alertsSent).all()).toHaveLength(30)
   })
 
+  it('batch alert deep-links to the FIRST freed site, not the campground list', async () => {
+    const db = getDb()
+    const { calls, smsDeps } = fakeTwilio()
+    await dispatchMatches(db, watchRow(userId), matches(50), { smsDeps })
+    // Twilio body is form-encoded; decode '+' (space) then percent-decode.
+    const body = decodeURIComponent(calls[0].replace(/\+/g, ' '))
+    expect(body).toContain('/camping/campsites/100') // first freed site's page
+    expect(body).not.toContain('/availability') // NOT the full-list campground page
+  })
+
   it('sends nothing when the kill-switch is off', async () => {
     const db = getDb()
     const { calls, smsDeps } = fakeTwilio()
@@ -123,5 +133,27 @@ describe('dispatchMatches — no SMS fan-out', () => {
     } finally {
       delete process.env.WATCH_SMS_ENABLED
     }
+  })
+})
+
+describe('formatBatchMessage — first-site deep link + site numbers', () => {
+  it('single opening links directly to that site', () => {
+    const { body, deepLink } = formatBatchMessage(watchRow('u'), matches(1), {})
+    expect(deepLink).toBe('https://www.recreation.gov/camping/campsites/100')
+    expect(body).toContain('Site 100')
+    expect(body).toContain('2026-08-10')
+  })
+
+  it('batch links to the FIRST freed site (not /availability) and lists site numbers', () => {
+    const { body, deepLink } = formatBatchMessage(watchRow('u'), matches(3), {})
+    expect(deepLink).toBe('https://www.recreation.gov/camping/campsites/100')
+    expect(deepLink).not.toContain('/availability')
+    expect(body).toContain('Sites: Site 100, Site 101, Site 102')
+    expect(body).toContain('2026-08-10')
+  })
+
+  it('caps the listed site numbers and shows a "+N more" overflow', () => {
+    const { body } = formatBatchMessage(watchRow('u'), matches(10), {})
+    expect(body).toContain('+4 more') // 10 distinct sites, first 6 shown
   })
 })
