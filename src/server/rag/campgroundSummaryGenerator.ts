@@ -41,6 +41,14 @@ export interface GenerateCampgroundSummaryOptions {
   answerProvider?: import('../openai/answerProvider.js').AnswerProvider
   provider?: import('../openai/createAnswerProvider.js').AnswerProviderName
   protectedAccess?: boolean
+  /**
+   * Pre-built knowledge results to summarize instead of the curated corpus — used
+   * by the RIDB fallback so a browsed recreation.gov campground (numeric id, not
+   * in the curated set) can still be summarized through this same pipeline.
+   */
+  overrideResults?: import('../../data/knowledge/knowledgeRetrieval.js').RetrievalResult[]
+  /** Campground display name when it is not in the static campground list. */
+  campgroundName?: string
 }
 
 /**
@@ -200,6 +208,8 @@ export async function generateCampgroundSummary({
   answerProvider,
   provider,
   protectedAccess = false,
+  overrideResults,
+  campgroundName: campgroundNameOverride,
 }: GenerateCampgroundSummaryOptions = {}) {
   const trimmedCampgroundId = (campgroundId ?? '').trim()
 
@@ -207,12 +217,15 @@ export async function generateCampgroundSummary({
     return buildInsufficientSummaryResponse('', 'campgroundId is required to generate a summary.')
   }
 
+  // The static list covers curated campgrounds; RIDB-sourced ones pass their name
+  // in campgroundNameOverride, so a missing static entry is not fatal there.
   const campground = getCampgroundById(trimmedCampgroundId)
-  if (!campground) {
+  const campgroundName = campground?.name ?? campgroundNameOverride
+  if (!campgroundName) {
     return buildInsufficientSummaryResponse(trimmedCampgroundId, 'Campground not found.')
   }
 
-  const results = orderSummaryDocuments(retrieveByCampground(trimmedCampgroundId))
+  const results = orderSummaryDocuments(overrideResults ?? retrieveByCampground(trimmedCampgroundId))
 
   if (results.length === 0) {
     return buildInsufficientSummaryResponse(trimmedCampgroundId)
@@ -230,7 +243,7 @@ export async function generateCampgroundSummary({
 
   const generationResult = await providerInstance.generateAnswer({
     instructions: buildCampgroundSummaryInstructions(
-      campground.name,
+      campgroundName,
       context.sourceCount,
       context.sources,
     ),

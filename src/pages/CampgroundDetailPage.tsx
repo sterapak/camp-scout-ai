@@ -49,17 +49,12 @@ export default function CampgroundDetailPage() {
       cancelled = true
     }
   }, [id, staticCampground])
+  // Start in 'loading': we attempt a summary for curated campgrounds AND any
+  // Recreation.gov campground (the server generates one from RIDB facility data
+  // when there's no curated knowledge). The effect below downgrades to
+  // 'unavailable' only when neither source can produce one.
   const [summaryState, setSummaryState] = useState<SummaryPageState>(
-    {
-      // Not 'idle' when we know there is no knowledge for this campground: idle
-      // renders nothing at all, which is why the card silently vanished on every
-      // Recreation.gov campground (knowledge is keyed by slug, so a numeric RIDB
-      // id never matches). 'unavailable' renders an explicit, honest state.
-      status: hasKnowledge ? 'loading' : 'unavailable',
-      ...(hasKnowledge
-        ? {}
-        : { message: 'An AI summary has not been generated for this campground yet.' }),
-    } as SummaryPageState,
+    { status: 'loading' } as SummaryPageState,
   )
   const [showWatch, setShowWatch] = useState(false)
   const [watchCreated, setWatchCreated] = useState(false)
@@ -99,7 +94,21 @@ export default function CampgroundDetailPage() {
   }, [campground, curatedImageFailed])
 
   useEffect(() => {
-    if (!campground || !hasKnowledge) {
+    // Wait until the imported-campground lookup settles so we can read its
+    // reservation URL (needed to tell whether it's a Recreation.gov facility).
+    if (resolving || !campground) {
+      return undefined
+    }
+
+    // Summarizable when curated, OR when it's a Recreation.gov campground (the
+    // server will try RIDB). Otherwise there is genuinely no source → honest state.
+    const recGovFacilityId = parseRecGovCampgroundId(campground.reservationUrl)
+    const canSummarize = hasKnowledge || Boolean(recGovFacilityId)
+    if (!canSummarize) {
+      setSummaryState({
+        status: 'unavailable',
+        message: 'An AI summary is not available for this campground.',
+      } as SummaryPageState)
       return undefined
     }
 
@@ -150,7 +159,7 @@ export default function CampgroundDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [campground, hasKnowledge])
+  }, [campground, hasKnowledge, resolving])
 
   if (!campground) {
     return (
