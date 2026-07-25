@@ -74,6 +74,9 @@ import silverLakeWestRulesSource2 from './campgrounds/silver-lake-west/rules--so
 import silverLakeWestReservationSource1 from './campgrounds/silver-lake-west/reservation--source-1.js'
 import silverLakeWestReservationSource2 from './campgrounds/silver-lake-west/reservation--source-2.js'
 import silverLakeWestAlertSource1 from './campgrounds/silver-lake-west/alert--source-1.js'
+import slyParkDescriptionSource1 from './campgrounds/sly-park/description--source-1.js'
+import slyParkRulesSource1 from './campgrounds/sly-park/rules--source-1.js'
+import slyParkReservationSource2 from './campgrounds/sly-park/reservation--source-2.js'
 import sonomaCoastBodegaDunesDescription from './campgrounds/sonoma-coast-bodega-dunes/description.js'
 import sonomaCoastBodegaDunesRules from './campgrounds/sonoma-coast-bodega-dunes/rules.js'
 import sonomaCoastBodegaDunesReservation from './campgrounds/sonoma-coast-bodega-dunes/reservation.js'
@@ -162,6 +165,9 @@ export const knowledgeDocuments: KnowledgeDocument[] = [
   silverLakeWestReservationSource1,
   silverLakeWestReservationSource2,
   silverLakeWestAlertSource1,
+  slyParkDescriptionSource1,
+  slyParkRulesSource1,
+  slyParkReservationSource2,
   sonomaCoastBodegaDunesDescription,
   sonomaCoastBodegaDunesRules,
   sonomaCoastBodegaDunesReservation,
