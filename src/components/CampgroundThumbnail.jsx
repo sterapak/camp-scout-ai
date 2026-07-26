@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { FiImage, FiMapPin } from 'react-icons/fi'
-import { getPrimaryImage } from '../data/campgroundData'
+import { getPrimaryImage, getBrandPlaceholder } from '../data/campgroundData'
 import { isApiAvailable } from '../api/apiAuth'
 import { parseRecGovCampgroundId } from '../utils/recgov'
 import { fetchCampgroundPhoto } from '../api/campgroundMediaClient'
@@ -63,20 +63,18 @@ export default function CampgroundThumbnail({ campground }) {
     }
   }, [visible, curated, campground.reservationUrl])
 
-  // State-park campgrounds (ReserveCalifornia / parks.ca.gov) have no Rec.gov
-  // photo source — show a branded banner so it reads as intentional, not broken.
-  const isStatePark = /reservecalifornia|parks\.ca\.gov/i.test(
-    `${campground.reservationUrl || ''} ${campground.sourceUrl || ''}`,
-  )
+  // Operator campgrounds (state parks, EID, …) have no Rec.gov photo source —
+  // show a branded banner so the empty state reads as intentional, not broken.
+  const brand = getBrandPlaceholder(campground)
 
   return (
     <div ref={ref}>
       {!photo || errored ? (
-        isStatePark ? (
+        brand ? (
           <div className="flex aspect-[16/9] w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-green-700 to-green-900 text-center text-white">
             <FiMapPin size={22} className="opacity-80" />
-            <span className="text-sm font-semibold">California State Parks</span>
-            <span className="text-xs opacity-70">parks.ca.gov</span>
+            <span className="text-sm font-semibold">{brand.label}</span>
+            <span className="text-xs opacity-70">{brand.domain}</span>
           </div>
         ) : (
           <div

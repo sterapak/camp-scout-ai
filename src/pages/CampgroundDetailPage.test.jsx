@@ -83,7 +83,8 @@ describe('CampgroundDetailPage', () => {
 
     expect(screen.getByText(sparseCampground.name)).toBeInTheDocument()
     expect(screen.getByText('Availability not connected')).toBeInTheDocument()
-    expect(screen.getByText('Official image not available')).toBeInTheDocument()
+    // No curated image + a known operator (state park) → branded placeholder banner.
+    expect(screen.getByText('California State Parks')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByText('AI summary')).toBeInTheDocument()
