@@ -360,4 +360,35 @@ export const campgrounds = [
       },
     ],
   },
+  {
+    id: 'sly-park',
+    name: 'Sly Park Recreation Area (Jenkinson Lake)',
+    region: 'El Dorado County / Pollock Pines',
+    sourceUrl: 'https://www.eid.org/recreation/sly-park-recreation-area-spra-at-jenkinson-lake',
+    reservationUrl: 'https://www.eid.org/recreation/spra-campsite-photos-and-reservations',
+    sources: [
+      {
+        name: 'El Dorado Irrigation District',
+        url: 'https://www.eid.org/recreation/sly-park-recreation-area-spra-at-jenkinson-lake',
+        sourceType: 'operator',
+        priority: 1,
+      },
+      {
+        name: 'El Dorado Irrigation District — Sly Park Camping Reservations',
+        url: 'https://www.eid.org/recreation/spra-campsite-photos-and-reservations',
+        sourceType: 'reservation',
+        priority: 2,
+      },
+    ],
+    amenities: ['190+ campsites', 'Boat launch', 'Swimming beaches', '30+ miles of trails', 'Equestrian camping (Black Oak)', 'Group camp areas', 'Restrooms'],
+    rules: [
+      'Up to 6 people per individual site; family sites allow up to 12',
+      'No domestic animals or diapers in the water or streams of Jenkinson Lake (California drinking water law)',
+      'Reservation fees cover the first vehicle (first two at family sites); additional vehicles, boats, and pets are paid on arrival',
+    ],
+    dogPolicy: 'Dogs allowed in the campground but NOT permitted in the water or streams of Jenkinson Lake under California drinking water law; a pet fee is paid on arrival.',
+    notes: 'EID-operated recreation area on Jenkinson Lake near Pollock Pines with over 190 campsites across areas including Scout Hill and Black Oak Equestrian. Individual sites are reservable up to six months ahead for March–November (the full month opens at 8 a.m. on the 1st of each month); December–February is first-come, first-served, weather permitting. Reservation Office: 530-295-6810.',
+    lastVerifiedAt: '2026-07-25',
+    tags: ['operator-managed', 'lakeside', 'mountain', 'equestrian', 'reservable', 'dog-friendly'],
+  },
 ]

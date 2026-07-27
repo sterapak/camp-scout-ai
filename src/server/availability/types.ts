@@ -37,4 +37,4 @@ export interface SiteFilters {
   weekdays?: number[]
 }
 
-export type Platform = 'recgov' | 'reservecalifornia'
+export type Platform = 'recgov' | 'reservecalifornia' | 'flybook'

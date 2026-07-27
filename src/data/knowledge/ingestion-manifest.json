@@ -137,6 +137,26 @@
         }
       ]
     },
+    "sly-park": {
+      "sourceUrl": "https://www.eid.org/recreation/sly-park-recreation-area-spra-at-jenkinson-lake",
+      "sourceName": "El Dorado Irrigation District",
+      "lastFetchedAt": "2026-07-25T12:00:00.000Z",
+      "contentHash": "6749bb82ce8d1e89cec6be423128ad8c6a64a75ae5c489cc94449871e403f94a",
+      "sources": [
+        {
+          "name": "El Dorado Irrigation District",
+          "url": "https://www.eid.org/recreation/sly-park-recreation-area-spra-at-jenkinson-lake",
+          "sourceType": "operator",
+          "priority": 1
+        },
+        {
+          "name": "El Dorado Irrigation District — Sly Park Camping Reservations",
+          "url": "https://www.eid.org/recreation/spra-campsite-photos-and-reservations",
+          "sourceType": "reservation",
+          "priority": 2
+        }
+      ]
+    },
     "sonoma-coast-bodega-dunes": {
       "sourceUrl": "https://www.parks.ca.gov/?page_id=451",
       "sourceName": "California State Parks",

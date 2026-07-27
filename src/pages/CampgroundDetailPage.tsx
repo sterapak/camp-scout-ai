@@ -9,7 +9,7 @@ import WatchCreateForm from '../components/WatchCreateForm.js'
 import AvailabilityNotice from '../components/AvailabilityNotice'
 import CampgroundAiSummary from '../components/CampgroundAiSummary'
 import CampgroundImage from '../components/CampgroundImage'
-import { getCampgroundById, getPrimaryImage } from '../data/campgroundData'
+import { getCampgroundById, getPrimaryImage, getBrandPlaceholder } from '../data/campgroundData'
 import { loadImportedCampgrounds, type DisplayCampground } from '../data/mergedCampgrounds'
 import { getKnowledgeCampgroundIds } from '../data/knowledge/documents.js'
 
@@ -175,6 +175,7 @@ export default function CampgroundDetailPage() {
 
   const curatedImage = getPrimaryImage(campground)
   const primaryImage = curatedImageFailed ? officialPhoto : (curatedImage ?? officialPhoto)
+  const brandPlaceholder = getBrandPlaceholder(campground)
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -198,6 +199,7 @@ export default function CampgroundDetailPage() {
           key={primaryImage?.url ?? 'none'}
           image={primaryImage}
           campgroundName={campground.name}
+          brand={brandPlaceholder}
           onLoadError={() => setCuratedImageFailed(true)}
         />
       )}
@@ -218,6 +220,7 @@ export default function CampgroundDetailPage() {
           key={primaryImage?.url ?? 'none'}
           image={primaryImage}
           campgroundName={campground.name}
+          brand={brandPlaceholder}
           onLoadError={() => setCuratedImageFailed(true)}
         />
           ) : undefined

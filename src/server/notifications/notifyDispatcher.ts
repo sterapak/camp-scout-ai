@@ -12,6 +12,7 @@ import type { Db } from '../db/index.js'
 import { alertsSent, userSettings, type WatchRow } from '../db/schema.js'
 import { buildSiteDeepLink } from '../availability/recGovAdapter.js'
 import { buildReserveCaliforniaLink } from '../availability/reserveCaliforniaAdapter.js'
+import { buildFlybookBookingLink } from '../availability/flybookAdapter.js'
 import type { WatchMatch } from '../availability/diffEngine.js'
 import { sendSms, twilioConfigured, type SendSmsDeps } from './twilioSmsSender.js'
 import { emailConfigured, sendEmail, type SendEmailDeps } from './emailSender.js'
@@ -36,10 +37,18 @@ export interface DispatchDeps {
   deepLinkFor?: (platform: string, siteId: string) => string
 }
 
-function deepLinkForMatch(platform: string, siteId: string, deps: DispatchDeps): string {
-  if (deps.deepLinkFor) return deps.deepLinkFor(platform, siteId)
-  if (platform === 'reservecalifornia') return buildReserveCaliforniaLink()
+function deepLinkForMatch(watch: WatchRow, siteId: string, deps: DispatchDeps): string {
+  if (deps.deepLinkFor) return deps.deepLinkFor(watch.platform, siteId)
+  if (watch.platform === 'reservecalifornia') return buildReserveCaliforniaLink()
+  if (watch.platform === 'flybook') return buildFlybookBookingLink(watch.facilityId)
   return buildSiteDeepLink(siteId)
+}
+
+/** Channel button label for the booking link, per platform. */
+function bookUrlTitle(platform: string): string {
+  if (platform === 'reservecalifornia') return 'Book on ReserveCalifornia'
+  if (platform === 'flybook') return 'Book now'
+  return 'Book on Recreation.gov'
 }
 
 export function formatMessage(watch: WatchRow, match: WatchMatch, deepLink: string): string {
@@ -66,7 +75,7 @@ export function formatBatchMessage(
   deps: DispatchDeps,
 ): { body: string; deepLink: string } {
   const first = matches[0]
-  const link = deepLinkForMatch(watch.platform, first.siteId, deps)
+  const link = deepLinkForMatch(watch, first.siteId, deps)
   if (matches.length === 1) {
     return { body: formatMessage(watch, first, link), deepLink: link }
   }
@@ -139,7 +148,7 @@ export async function dispatchMatches(
   if (canPush) {
     const res = await sendPushover(
       body,
-      { title: `🏕 ${watch.campgroundName}`, url: deepLink, urlTitle: 'Book on Recreation.gov' },
+      { title: `🏕 ${watch.campgroundName}`, url: deepLink, urlTitle: bookUrlTitle(watch.platform) },
       deps.pushoverDeps,
     )
     firedChannels.push('push')
@@ -162,7 +171,7 @@ export async function dispatchMatches(
         siteName: match.siteName,
         date: match.date,
         channel: channelLabel,
-        deepLink: deepLinkForMatch(watch.platform, match.siteId, deps),
+        deepLink: deepLinkForMatch(watch, match.siteId, deps),
         messageBody: body,
         deliveryStatus,
       })

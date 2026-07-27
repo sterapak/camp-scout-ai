@@ -1,19 +1,34 @@
 import React, { useState } from 'react'
-import { FiExternalLink, FiImage } from 'react-icons/fi'
+import { FiExternalLink, FiImage, FiMapPin } from 'react-icons/fi'
 
 /**
  * Displays a campground hero image with source attribution, or a clean placeholder.
+ * When there's no image but the campground has a known operator brand, shows a
+ * branded banner (e.g. "EID Parks") so the empty state reads as intentional.
  * @param {{
  *   image?: import('../data/campgroundSchema.js').CampgroundImage | null
  *   campgroundName: string
+ *   brand?: { label: string, domain: string } | null
  *   className?: string
  *   onLoadError?: () => void
  * }} props
  */
-export default function CampgroundImage({ image, campgroundName, className = '', onLoadError }) {
+export default function CampgroundImage({ image, campgroundName, brand = null, className = '', onLoadError }) {
   const [hasError, setHasError] = useState(false)
 
   if (!image || hasError) {
+    if (brand) {
+      return (
+        <div
+          className={`flex aspect-[4/3] w-full flex-col items-center justify-center gap-1 rounded-xl bg-gradient-to-br from-green-700 to-green-900 text-center text-white ${className}`}
+          aria-label={`${brand.label} — no official photo available for ${campgroundName}`}
+        >
+          <FiMapPin size={28} className="opacity-80" aria-hidden="true" />
+          <span className="text-sm font-semibold">{brand.label}</span>
+          <span className="text-xs opacity-70">{brand.domain}</span>
+        </div>
+      )
+    }
     return (
       <div
         className={`flex aspect-[4/3] w-full items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 ${className}`}

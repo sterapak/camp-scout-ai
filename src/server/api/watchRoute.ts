@@ -20,6 +20,7 @@ import { getDb } from '../db/index.js'
 import { alertsSent, userSettings, watches } from '../db/schema.js'
 import { checkCampgroundWatchable, parseRecGovCampgroundId } from '../availability/recGovAdapter.js'
 import { checkFacilityWatchable } from '../availability/reserveCaliforniaAdapter.js'
+import { checkFacilityWatchable as checkFlybookWatchable } from '../availability/flybookAdapter.js'
 import { requireUser } from '../auth/authRoutes.js'
 
 export interface WatchRouteDeps {
@@ -108,9 +109,9 @@ export async function handleWatchRoutes(
         const startDate = (body.startDate as string) || ''
         const endDate = (body.endDate as string) || ''
 
-        if (platform !== 'recgov' && platform !== 'reservecalifornia') {
+        if (platform !== 'recgov' && platform !== 'reservecalifornia' && platform !== 'flybook') {
           sendJson(res, 400, {
-            error: 'Only "recgov" and "reservecalifornia" platforms are supported.',
+            error: 'Only "recgov", "reservecalifornia" and "flybook" platforms are supported.',
           })
           return true
         }
@@ -141,7 +142,9 @@ export async function handleWatchRoutes(
         const check =
           platform === 'reservecalifornia'
             ? await checkFacilityWatchable(facilityId, month, { fetchImpl: deps.fetchImpl })
-            : await checkCampgroundWatchable(facilityId, month, { fetchImpl: deps.fetchImpl })
+            : platform === 'flybook'
+              ? await checkFlybookWatchable(facilityId, month, { fetchImpl: deps.fetchImpl })
+              : await checkCampgroundWatchable(facilityId, month, { fetchImpl: deps.fetchImpl })
         if (check.reason === 'not_found') {
           sendJson(res, 400, {
             error:
