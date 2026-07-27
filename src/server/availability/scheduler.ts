@@ -20,6 +20,7 @@ import type { Db } from '../db/index.js'
 import { availabilitySnapshots, watches, type WatchRow } from '../db/schema.js'
 import { fetchMonthAvailability as fetchRecGovMonth } from './recGovAdapter.js'
 import { fetchMonthAvailability as fetchRcMonth } from './reserveCaliforniaAdapter.js'
+import { fetchMonthAvailability as fetchFlybookMonth } from './flybookAdapter.js'
 import { diffAvailability } from './diffEngine.js'
 import type { FetchAvailabilityResult, NormalizedAvailability, SiteFilters } from './types.js'
 
@@ -31,9 +32,9 @@ function fetchMonthFor(
   fetchImpl?: typeof fetch,
 ): Promise<FetchAvailabilityResult> {
   const opts = { fetchImpl }
-  return platform === 'reservecalifornia'
-    ? fetchRcMonth(facilityId, monthKey, opts)
-    : fetchRecGovMonth(facilityId, monthKey, opts)
+  if (platform === 'reservecalifornia') return fetchRcMonth(facilityId, monthKey, opts)
+  if (platform === 'flybook') return fetchFlybookMonth(facilityId, monthKey, opts)
+  return fetchRecGovMonth(facilityId, monthKey, opts)
 }
 import { dispatchMatches, type DispatchDeps } from '../notifications/notifyDispatcher.js'
 
@@ -102,7 +103,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const snapshotKey = (platform: string, facilityId: string, monthKey: string) =>
   `${platform}:${facilityId}:${monthKey}`
 
-const SUPPORTED_PLATFORMS = new Set(['recgov', 'reservecalifornia'])
+const SUPPORTED_PLATFORMS = new Set(['recgov', 'reservecalifornia', 'flybook'])
 
 /** Human-readable poll status from the failing HTTP status (0 = network). */
 function pollErrorMessage(status: number | undefined): string {
