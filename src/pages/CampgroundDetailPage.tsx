@@ -4,6 +4,7 @@ import { FiArrowLeft, FiExternalLink, FiMapPin } from 'react-icons/fi'
 import { postSummary, SummaryApiError } from '../api/summaryClient.js'
 import { isApiAvailable } from '../api/apiAuth.js'
 import { isWatchable, parseRecGovCampgroundId } from '../utils/recgov.js'
+import { flybookConfigForCampground } from '../data/flybookCampgrounds.js'
 import { fetchCampgroundPhoto, type CampgroundPhoto } from '../api/campgroundMediaClient.js'
 import WatchCreateForm from '../components/WatchCreateForm.js'
 import AvailabilityNotice from '../components/AvailabilityNotice'
@@ -30,6 +31,8 @@ export default function CampgroundDetailPage() {
   const [importedCampground, setImportedCampground] = useState<DisplayCampground | null>(null)
   const [resolving, setResolving] = useState(!staticCampground)
   const campground = staticCampground ?? importedCampground
+  // Non-recgov (Flybook) campgrounds are watchable via their mapped account id.
+  const flybookWatch = campground ? flybookConfigForCampground(campground.id) : null
   const hasKnowledge = getKnowledgeCampgroundIds().includes(id ?? '')
 
   // Fall back to the Recreation.gov-imported set for campgrounds not curated.
@@ -261,7 +264,7 @@ export default function CampgroundDetailPage() {
         </div>
       </section>
 
-      {isApiAvailable() && isWatchable(campground.reservationUrl) && (
+      {isApiAvailable() && (isWatchable(campground.reservationUrl) || flybookWatch) && (
         <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-3">
           <h3 className="text-lg font-medium text-gray-900">Watch for cancellations</h3>
           {watchCreated ? (
@@ -272,7 +275,9 @@ export default function CampgroundDetailPage() {
           ) : showWatch ? (
             <WatchCreateForm
               prefillName={campground.name}
-              prefillUrl={campground.reservationUrl}
+              {...(flybookWatch
+                ? { platform: 'flybook', facilityId: flybookWatch.facilityId }
+                : { prefillUrl: campground.reservationUrl })}
               onCreated={() => {
                 setWatchCreated(true)
                 setShowWatch(false)
