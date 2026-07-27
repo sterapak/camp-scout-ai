@@ -1,7 +1,8 @@
 /**
  * Create-a-watch form. Reused by WatchesPage (owner types a Recreation.gov URL)
  * and the campground detail page (prefilled with that campground's name + URL,
- * URL hidden). Phase 1 supports Recreation.gov campgrounds only.
+ * URL hidden). Recreation.gov by default; a non-recgov platform (e.g. Flybook)
+ * is driven directly by `platform` + `facilityId` (no URL, no recgov climate).
  */
 import { useEffect, useState, type FormEvent } from 'react'
 
@@ -13,6 +14,14 @@ interface WatchCreateFormProps {
   prefillName?: string
   /** When set, the campground is fixed (URL field hidden) — used on detail pages. */
   prefillUrl?: string
+  /** Platform of the campground. Default 'recgov' (parses a recreation.gov URL). */
+  platform?: string
+  /**
+   * Direct facility id for non-recgov platforms (e.g. a Flybook account id). When
+   * set with a non-recgov platform, the form skips URL parsing + recgov climate and
+   * submits { platform, facilityId } straight through.
+   */
+  facilityId?: string
   onCreated?: (watch: Watch) => void
 }
 
@@ -59,8 +68,11 @@ function MonthRow({ m }: { m: MonthClimate }) {
 export default function WatchCreateForm({
   prefillName,
   prefillUrl,
+  platform = 'recgov',
+  facilityId: facilityIdProp,
   onCreated,
 }: WatchCreateFormProps) {
+  const isRecgov = platform === 'recgov'
   const [name, setName] = useState(prefillName ?? '')
   const [url, setUrl] = useState(prefillUrl ?? '')
   const [startDate, setStartDate] = useState('')
@@ -78,7 +90,8 @@ export default function WatchCreateForm({
   // A watch is a WINDOW, not a trip — a cancellation can free any night in it.
   // So show typical climate for each month in the range, not just start/end.
   useEffect(() => {
-    const facilityId = parseRecGovCampgroundId(url)
+    // Climate is sourced from the recreation.gov facility feed; skip for other platforms.
+    const facilityId = isRecgov ? parseRecGovCampgroundId(url) : null
     if (!facilityId || !startDate || !endDate) {
       setClimate({ elevationFt: 0, months: [] })
       setLoadingWeather(false)
@@ -94,7 +107,7 @@ export default function WatchCreateForm({
     return () => {
       cancelled = true
     }
-  }, [url, startDate, endDate])
+  }, [url, startDate, endDate, isRecgov])
 
   function toggleDay(day: number) {
     setWeekdays((prev) =>
@@ -103,14 +116,20 @@ export default function WatchCreateForm({
   }
 
   const fixedUrl = Boolean(prefillUrl)
+  // The campground is fixed (name locked) on a detail page — recgov via prefillUrl,
+  // or a non-recgov platform pinned by facilityId.
+  const fixedCampground = fixedUrl || (!isRecgov && Boolean(facilityIdProp))
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
 
     if (!name.trim()) return setError('Campground name is required.')
-    if (!parseRecGovCampgroundId(url)) {
+    if (isRecgov && !parseRecGovCampgroundId(url)) {
       return setError('Enter a valid recreation.gov campground URL (…/camping/campgrounds/<id>).')
+    }
+    if (!isRecgov && !facilityIdProp) {
+      return setError('This campground is missing its watch configuration.')
     }
     if (!startDate || !endDate) return setError('Pick a start and end date.')
     if (endDate < startDate) return setError('End date must be on or after the start date.')
@@ -119,14 +138,16 @@ export default function WatchCreateForm({
     setSubmitting(true)
     try {
       const watch = await createWatch({
-        recgovUrl: url.trim(),
         campgroundName: name.trim(),
         startDate,
         endDate,
         minNights: Math.max(1, minNights),
         weekdays,
+        ...(isRecgov
+          ? { recgovUrl: url.trim() }
+          : { platform, facilityId: facilityIdProp }),
       })
-      if (!fixedUrl) {
+      if (!fixedCampground) {
         setName('')
         setUrl('')
       }
@@ -156,11 +177,11 @@ export default function WatchCreateForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Upper Pines (Yosemite)"
-          readOnly={Boolean(prefillName) && fixedUrl}
+          readOnly={Boolean(prefillName) && fixedCampground}
         />
       </div>
 
-      {!fixedUrl && (
+      {isRecgov && !fixedUrl && (
         <div>
           <label className={label} htmlFor="watch-url">Recreation.gov campground URL</label>
           <input
