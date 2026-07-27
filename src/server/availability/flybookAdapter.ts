@@ -44,6 +44,18 @@ export interface FlybookFetchOptions extends PoliteFetchOptions {
   numberOfGuests?: number
   /** Delay between the per-night requests. Tests pass 0. */
   perNightDelayMs?: number
+  /** The account's `x-fb-api-key`. Tests inject; prod reads FLYBOOK_API_KEY_<accountId>. */
+  apiKey?: string
+}
+
+/**
+ * RoomFinder requires an `x-fb-api-key` header (the account's Flybook embed key);
+ * a bare POST 403s "No authorization provided". The key is per-account, so it's
+ * read from env `FLYBOOK_API_KEY_<accountId>` (a Fly secret) — never committed.
+ */
+function resolveApiKey(accountId: number, override?: string): string | undefined {
+  if (override) return override
+  return process.env[`FLYBOOK_API_KEY_${accountId}`]
 }
 
 /** One site as returned by RoomFinder (only the fields we consume). */
@@ -88,6 +100,7 @@ function nightIso(monthKey: string, day: number): { start: string; end: string }
 
 async function fetchNight(
   accountId: number,
+  apiKey: string,
   start: string,
   end: string,
   numberOfGuests: number,
@@ -96,6 +109,7 @@ async function fetchNight(
   return politeFetchJson<RoomFinderSite[]>(ROOMFINDER_URL, {
     method: 'POST',
     userAgent: FLYBOOK_UA,
+    headers: { 'x-fb-api-key': apiKey },
     body: JSON.stringify({ accountId, numberOfGuests, start, end }),
     ...options,
   })
@@ -114,7 +128,12 @@ export async function fetchMonthAvailability(
   if (!Number.isInteger(accountId) || accountId <= 0) {
     return { ok: false, status: 0, error: `invalid flybook accountId: ${facilityId}` }
   }
-  const { numberOfGuests = 1, perNightDelayMs = DEFAULT_PER_NIGHT_DELAY_MS, ...fetchOpts } = options
+  const { numberOfGuests = 1, perNightDelayMs = DEFAULT_PER_NIGHT_DELAY_MS, apiKey, ...fetchOpts } =
+    options
+  const key = resolveApiKey(accountId, apiKey)
+  if (!key) {
+    return { ok: false, status: 0, error: `missing FLYBOOK_API_KEY_${accountId}` }
+  }
   const nights = daysInMonth(monthKey)
   const out: NormalizedAvailability = {}
   let anyOk = false
@@ -124,7 +143,7 @@ export async function fetchMonthAvailability(
   for (let day = 1; day <= nights; day++) {
     if (day > 1) await sleep(perNightDelayMs)
     const { start, end } = nightIso(monthKey, day)
-    const res = await fetchNight(accountId, start, end, numberOfGuests, fetchOpts)
+    const res = await fetchNight(accountId, key, start, end, numberOfGuests, fetchOpts)
 
     if (!res.ok || !Array.isArray(res.data)) {
       lastStatus = res.status
@@ -178,9 +197,14 @@ export async function checkFacilityWatchable(
   if (!Number.isInteger(accountId) || accountId <= 0) {
     return { watchable: false, reason: 'not_found', status: 0 }
   }
-  const { numberOfGuests = 1, ...fetchOpts } = options
+  const { numberOfGuests = 1, apiKey, ...fetchOpts } = options
+  const key = resolveApiKey(accountId, apiKey)
+  if (!key) {
+    // No key configured — can't verify, but don't hard-reject; treat as transient.
+    return { watchable: false, reason: 'probe_error', status: 0, detail: `missing FLYBOOK_API_KEY_${accountId}` }
+  }
   const { start, end } = nightIso(monthKey, 1)
-  const res = await fetchNight(accountId, start, end, numberOfGuests, fetchOpts)
+  const res = await fetchNight(accountId, key, start, end, numberOfGuests, fetchOpts)
   if (res.ok && Array.isArray(res.data)) return { watchable: true, reason: 'ok' }
   if (res.status === 404) return { watchable: false, reason: 'not_found', status: 404 }
   return { watchable: false, reason: 'probe_error', status: res.status ?? 0, detail: res.error }

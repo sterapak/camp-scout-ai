@@ -10,11 +10,11 @@ import {
 function fetchReturning(
   sites: unknown[],
   opts: { ok?: boolean; status?: number } = {},
-): { fetchImpl: typeof fetch; calls: Array<{ url: string; body: any }> } {
-  const calls: Array<{ url: string; body: any }> = []
+): { fetchImpl: typeof fetch; calls: Array<{ url: string; body: any; headers: any }> } {
+  const calls: Array<{ url: string; body: any; headers: any }> = []
   const { ok = true, status = 200 } = opts
   const fetchImpl = (async (url: string, init: any) => {
-    calls.push({ url, body: init?.body ? JSON.parse(init.body) : null })
+    calls.push({ url, body: init?.body ? JSON.parse(init.body) : null, headers: init?.headers ?? {} })
     return {
       ok,
       status,
@@ -24,6 +24,8 @@ function fetchReturning(
   }) as unknown as typeof fetch
   return { fetchImpl, calls }
 }
+
+const KEY = 'test-fb-key'
 
 const SITES = [
   { roomId: 10, name: '010 Pinecone', capacity: 6, categoryFilters: ['Waterview'], isRoomBookable: true },
@@ -41,7 +43,7 @@ describe('flybookAdapter', () => {
 
   it('sweeps one RoomFinder POST per night and assembles the per-date grid', async () => {
     const { fetchImpl, calls } = fetchReturning(SITES)
-    const res = await fetchMonthAvailability('356', '2026-02', { fetchImpl, perNightDelayMs: 0 })
+    const res = await fetchMonthAvailability('356', '2026-02', { fetchImpl, perNightDelayMs: 0, apiKey: KEY })
 
     expect(res.ok).toBe(true)
     // Feb 2026 = 28 nights → 28 POSTs, all to RoomFinder with accountId 356.
@@ -49,6 +51,8 @@ describe('flybookAdapter', () => {
     expect(calls[0].url).toContain('/vX/lodging/RoomFinder')
     expect(calls[0].body).toMatchObject({ accountId: 356, numberOfGuests: 1 })
     expect(calls[0].body.start.slice(0, 10)).toBe('2026-02-01')
+    // The required x-fb-api-key header is sent (a bare POST 403s).
+    expect(calls[0].headers['x-fb-api-key']).toBe(KEY)
 
     const avail = res.availability!
     // Active bookable site present on every night; inactive site dropped entirely.
@@ -65,15 +69,23 @@ describe('flybookAdapter', () => {
 
   it('fails fast (ok:false) when the first night errors — no 30-request hammer', async () => {
     const { fetchImpl, calls } = fetchReturning([], { ok: false, status: 500 })
-    const res = await fetchMonthAvailability('356', '2026-02', { fetchImpl, perNightDelayMs: 0 })
+    const res = await fetchMonthAvailability('356', '2026-02', { fetchImpl, perNightDelayMs: 0, apiKey: KEY })
     expect(res.ok).toBe(false)
     expect(res.status).toBe(500)
     expect(calls).toHaveLength(1)
   })
 
+  it('errors (no fetch) when no api key is configured', async () => {
+    const { fetchImpl, calls } = fetchReturning(SITES)
+    const res = await fetchMonthAvailability('356', '2026-02', { fetchImpl, perNightDelayMs: 0 })
+    expect(res.ok).toBe(false)
+    expect(res.error).toContain('FLYBOOK_API_KEY_356')
+    expect(calls).toHaveLength(0)
+  })
+
   it('rejects a non-numeric account id without any fetch', async () => {
     const { fetchImpl, calls } = fetchReturning(SITES)
-    const res = await fetchMonthAvailability('not-a-number', '2026-02', { fetchImpl, perNightDelayMs: 0 })
+    const res = await fetchMonthAvailability('not-a-number', '2026-02', { fetchImpl, perNightDelayMs: 0, apiKey: KEY })
     expect(res.ok).toBe(false)
     expect(calls).toHaveLength(0)
   })
@@ -82,12 +94,14 @@ describe('flybookAdapter', () => {
     const okr = await checkFacilityWatchable('356', '2026-02', {
       fetchImpl: fetchReturning(SITES).fetchImpl,
       perNightDelayMs: 0,
+      apiKey: KEY,
     })
     expect(okr).toEqual({ watchable: true, reason: 'ok' })
 
     const nf = await checkFacilityWatchable('356', '2026-02', {
       fetchImpl: fetchReturning([], { ok: false, status: 404 }).fetchImpl,
       perNightDelayMs: 0,
+      apiKey: KEY,
     })
     expect(nf).toMatchObject({ watchable: false, reason: 'not_found', status: 404 })
   })
